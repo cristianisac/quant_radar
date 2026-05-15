@@ -104,6 +104,52 @@ def test_yfinance_default_start_is_far_enough_back_for_sma_200():
     )
 
 
+def test_yfinance_uses_period_max_for_ancient_start_dates():
+    """Regression: yfinance silently returns ~30 bars when start is older
+    than its internal cutoff for some tickers (AAPL with start=1970-01-01
+    returns the last month). Adapter must switch to period='max'."""
+    from datetime import UTC, datetime
+
+    from quant_radar.sources import yfinance_src
+
+    captured: dict = {}
+
+    def capture(**kwargs):
+        captured.update(kwargs)
+        return _fake_yf_frame()
+
+    with patch.object(yfinance_src.yf, "download", side_effect=capture):
+        yfinance_src.fetch_ohlcv(
+            "AAPL", interval="1d", start=datetime(1970, 1, 1, tzinfo=UTC),
+        )
+
+    assert captured.get("period") == "max", (
+        f"ancient start should switch to period='max'; got kwargs: {captured}"
+    )
+    assert "start" not in captured, "should not pass start when using period=max"
+
+
+def test_yfinance_recent_start_keeps_explicit_range():
+    """Counterpart: recent start dates should still use start/end."""
+    from datetime import UTC, datetime
+
+    from quant_radar.sources import yfinance_src
+
+    captured: dict = {}
+
+    def capture(**kwargs):
+        captured.update(kwargs)
+        return _fake_yf_frame()
+
+    with patch.object(yfinance_src.yf, "download", side_effect=capture):
+        yfinance_src.fetch_ohlcv(
+            "AAPL", interval="1d", start=datetime(2023, 1, 1, tzinfo=UTC),
+        )
+
+    assert "period" not in captured, "recent start should not use period=max"
+    assert captured.get("start") is not None
+
+
 # ---------- FRED ----------
 
 

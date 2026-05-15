@@ -8,7 +8,22 @@ Status legend: ☐ todo · ◐ in progress · ☑ done · ✕ skipped
 - ☐ **Finnhub env passthrough** — forward `FINNHUB_API_KEY` from the host through `make docker-shell` / `make docker-ui` (2-line Makefile change).
 - ☐ **News routing: Finnhub primary, GDELT fallback** — when `FINNHUB_API_KEY` is set, prefer `finnhub_src` for reliability; fall back to `gdelt_src` on missing key or failure. Update SKILL.md guidance.
 
-## Phase 12 — Policy tightening: minimum-history gate ☑
+## Phase 12 — Policy tightening + exhaustive E2E + yfinance ancient-start bug ☑
+
+### Policy
+- ☑ SKILL.md checklist §8 now requires the live probe to return ≥250 daily / ≥52 weekly / ≥24 monthly / ≥8 quarterly / ≥5 annual bars on at least one mainstream symbol, or the source must be flagged `status: "limited"`.
+- ☑ Catalog dataclass documents the four valid statuses inline: `active` / `limited` / `deferred` / `paid-only`.
+- ☑ `tests/test_catalog.py` accepts the new `limited` status value.
+
+### Exhaustive E2E (`scripts/e2e_full.py`)
+- ☑ 9 sections (A–I) covering: introspection (list/describe/probe), yfinance across asset classes (stock/ETF/index/FX/crypto-USD), Binance intervals + symbol normalization, FRED at native frequencies (daily / monthly / quarterly), every indicator + return period + regime classifier, pattern detection (channels / breakouts / vision) + tight-threshold rejection, every card type (chart / news / sentiment / analysis / combo) + every CRUD operation, news + sentiment payload shapes, multi-source hydration through the UI layer.
+- ☑ Re-runnable: tests use **delta-based** card counts rather than absolutes, so warm-cache runs pass too.
+- ☑ Both cold-cache and warm-cache runs: **0 failures, 2 warnings (GDELT — expected per Phase 11 verdict)**.
+
+### Bug found during the live run + fixed
+- ☑ **yfinance silently returns ~30 bars for AAPL when `start` is older than ~40 years** — e.g. `start=1970-01-01` returned only 22 bars from April 2026 instead of the full history from 1980-12-12. The probe_history tool was using `_FAR_BACK = 1970-01-01`, which poisoned the cache and broke every downstream AAPL test.
+- ☑ Adapter now switches to `yf.download(period="max", …)` when the requested start is older than 40 years and no explicit end is set. Verified live: AAPL now returns **11,448 bars from 1980-12-12**. Two regression tests pinned (`test_yfinance_uses_period_max_for_ancient_start_dates`, `test_yfinance_recent_start_keeps_explicit_range`).
+- ☑ `scripts/*.py` line-length lint relaxed (operational scripts; readable printf-style lines beat artificial breaks).
 - ☑ SKILL.md checklist §8 now requires the live probe to return ≥250 daily / ≥52 weekly / ≥24 monthly / ≥8 quarterly / ≥5 annual bars on at least one mainstream symbol, or the source must be flagged `status: "limited"`.
 - ☑ Catalog dataclass documents the four valid statuses inline: `active` / `limited` / `deferred` / `paid-only`. Agent guidance: `limited` sources are usable for current-value queries but not for SMAs / trend analysis.
 - ☑ `tests/test_catalog.py` now accepts the new `limited` status value.

@@ -65,20 +65,44 @@ def _default_start(interval: str) -> datetime:
     return datetime.now(UTC) - delta
 
 
+# yfinance silently returns ~30 bars when `start` is older than its
+# internal cutoff for the ticker — e.g. AAPL with start=1970-01-01
+# returns only the last month. Switch to ``period="max"`` for these
+# "give me everything" requests; it's reliable across tickers.
+_PERIOD_MAX_CUTOFF = timedelta(days=40 * 365)
+
+
 def _fetch(
     symbol: str, interval: str, start: datetime | None, end: datetime | None
 ) -> pd.DataFrame:
     if start is None:
         start = _default_start(interval)
-    raw = yf.download(
-        tickers=symbol,
-        start=start,
-        end=end,
-        interval=_to_yf_interval(interval),
-        auto_adjust=False,
-        progress=False,
-        threads=False,
+
+    use_period_max = (
+        end is None
+        and (datetime.now(UTC) - start) > _PERIOD_MAX_CUTOFF
     )
+
+    yf_interval = _to_yf_interval(interval)
+    if use_period_max:
+        raw = yf.download(
+            tickers=symbol,
+            period="max",
+            interval=yf_interval,
+            auto_adjust=False,
+            progress=False,
+            threads=False,
+        )
+    else:
+        raw = yf.download(
+            tickers=symbol,
+            start=start,
+            end=end,
+            interval=yf_interval,
+            auto_adjust=False,
+            progress=False,
+            threads=False,
+        )
     if raw is None or raw.empty:
         return pd.DataFrame()
     if isinstance(raw.columns, pd.MultiIndex):

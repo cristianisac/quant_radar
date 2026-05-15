@@ -156,6 +156,12 @@ phases:
       - id: status_limited
         title: 'New ''limited'' status in catalog for short-history sources'
         status: done
+      - id: e2e_full
+        title: scripts/e2e_full.py — re-runnable exhaustive E2E (sections A–I)
+        status: done
+      - id: yfinance_period_max_fix
+        title: yfinance switches to period='max' for ancient start (AAPL bug)
+        status: done
   - id: p11
     title: Durable source-onboarding policy + GDELT verdict
     status: done
