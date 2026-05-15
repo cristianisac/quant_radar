@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+build/
+dist/
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.pyright_cache/
+.mypy_cache/
+
+# Local data (cache & user dashboards never committed)
+# data/ is created on demand by quant_radar.core.config.paths.ensure()
+data/
+
+# Defensive: never commit data files anywhere in the tree
+*.parquet
+*.feather
+*.arrow
+*.csv
+*.tsv
+*.json.gz
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+*.h5
+*.hdf5
+*.pkl
+*.pickle
+*.npz
+*.npy
+
+# Plot/image dumps (charts cached for vision passes etc.)
+*.png
+*.jpg
+*.jpeg
+*.svg
+!docs/**/*.png
+!docs/**/*.jpg
+!docs/**/*.svg
+
+# Logs
+*.log
+logs/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

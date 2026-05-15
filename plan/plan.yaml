@@ -1,0 +1,64 @@
+last_updated: 2026-05-15
+phases:
+  - id: p0
+    title: Repo scaffold
+    status: in_progress
+    branch: phase-0-scaffold
+    tasks:
+      - id: pyproject
+        title: pyproject.toml with uv + dev deps
+        status: done
+      - id: gitignore
+        title: .gitignore with 3-layer data protection
+        status: done
+      - id: readme
+        title: README.md
+        status: done
+      - id: skill
+        title: SKILL.md v1
+        status: done
+      - id: plan_files
+        title: plan/PROGRESS.md and plan.yaml
+        status: done
+      - id: pkg_skeleton
+        title: Package subdirs
+        status: done
+      - id: types
+        title: TimeSeries, OHLCV, NewsItem Pydantic models
+        status: done
+      - id: config
+        title: paths config
+        status: done
+      - id: tests
+        title: Phase 0 smoke tests
+        status: done
+      - id: green
+        title: Lint, typecheck, tests all green
+        status: in_progress
+      - id: push
+        title: First commit and push to GitLab
+        status: todo
+  - id: p1
+    title: Cache + data sources
+    status: todo
+    branch: phase-1-cache-sources
+  - id: p2
+    title: Indicators and TA tools
+    status: todo
+    branch: phase-2-indicators
+  - id: p3
+    title: Card persistence
+    status: todo
+    branch: phase-3-cards
+  - id: p4
+    title: Streamlit viewer
+    status: todo
+    branch: phase-4-viewer
+  - id: p5
+    title: Pattern detection (algo + vision)
+    status: todo
+    branch: phase-5-patterns
+  - id: p6
+    title: News + sentiment
+    status: todo
+    branch: phase-6-news-sentiment
