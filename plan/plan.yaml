@@ -75,8 +75,33 @@ phases:
         status: done
   - id: p4
     title: Streamlit viewer
-    status: todo
+    status: done
     branch: phase-4-viewer
+    tasks:
+      - id: app
+        title: ui/app.py with Main/Working tabs
+        status: done
+      - id: density
+        title: Density slider 1-4 columns
+        status: done
+      - id: enlarge
+        title: Click-to-enlarge dialog with Plotly draw tools
+        status: done
+      - id: refresh
+        title: Auto-refresh 2-30s via streamlit-autorefresh
+        status: done
+      - id: render
+        title: Card renderers (chart, news, sentiment, analysis)
+        status: done
+      - id: hydrate
+        title: DataRef -> DataFrame via cache
+        status: done
+      - id: tests
+        title: 77 tests passing in the sandbox
+        status: done
+    deferred:
+      - drag-to-move via streamlit-elements (Phase 4.5 if needed)
+      - persisting drawn shapes back to disk (use add_annotation tool instead)
   - id: p5
     title: Pattern detection (algo + vision)
     status: todo

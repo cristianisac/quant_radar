@@ -42,14 +42,17 @@ Status legend: ☐ todo · ◐ in progress · ☑ done · ✕ skipped
 - ☑ Reload-on-start via simple read-from-disk
 - ☑ 68 tests passing in the sandbox
 
-## Phase 4 — Streamlit viewer ☐
-- ☐ Main / Working tabs
-- ☐ Density slider (column count) to fit more cards
-- ☐ `streamlit-elements` drag/move
-- ☐ Click-to-enlarge modal
-- ☐ `streamlit-drawable-canvas` on enlarged charts
-- ☐ Auto-refresh on file change
-- ☐ Pre-commit hook for large-file protection
+## Phase 4 — Streamlit viewer ☑
+- ☑ Main / Working tabs (Working tab only appears when working dashboard has cards)
+- ☑ Density slider (1–4 cards per row)
+- ☑ Click-to-enlarge dialog (`st.dialog`)
+- ☑ Plotly built-in shape drawing in enlarged view (line, openpath, rect, erase)
+- ☑ Auto-refresh via `streamlit-autorefresh` (2–30s)
+- ☑ DataRef hydration via cache (no network within TTL)
+- ☑ Card type renderers: chart (candlestick + overlays + subplots + annotations), news, sentiment, analysis
+- ☑ 77 tests passing in the sandbox
+- ◐ Drag-to-move via `streamlit-elements` — deferred (st.columns grid + density slider covers density; drag adds complexity, defer to Phase 4.5 if needed)
+- ◐ Persisting drawn shapes back to disk — currently drawings are visual-only; saving is via the agent calling `add_annotation`
 
 ## Phase 5 — Pattern detection ☐
 - ☐ `analytics.channels` (linear regression on swing highs/lows)

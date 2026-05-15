@@ -74,8 +74,14 @@ Cards (Phase 3 — `from quant_radar import tools`):
 
 Card types: `chart`, `news`, `sentiment`, `analysis`, `combo`. Card specs are tiny — they reference data via `DataRef` (source/kind/name/interval), never embed it.
 
+Viewer (Phase 4):
+- Run with `make docker-ui` → opens at `http://localhost:8501`.
+- Read-only Streamlit app. It does **not** create or modify cards — it reads `data/cards/main.db` and `data/cards/working.json` and renders.
+- Tabs: **Main** is always shown; **Working** appears only when the working dashboard has cards.
+- Density slider (1–4 columns), auto-refresh slider (2–30 s).
+- Click ⛶ on a card to enlarge — the enlarged view enables Plotly's draw tools (line, openpath, rect, erase). To persist a shape, ask the agent to call `add_annotation` with the coordinates.
+
 **Planned for later phases:**
-- Phase 4: Streamlit viewer with Main/Working tabs
 - Phase 5: `detect_channels`, `detect_breakouts`, `detect_patterns_vision`
 - Phase 6: `fetch_news`, `fetch_top_headlines`, `summarize_news`, `score_sentiment`
 
