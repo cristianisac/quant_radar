@@ -109,6 +109,45 @@ def test_gdelt_recovers_from_transient_429(monkeypatch):
     assert len(responses.calls) == 2
 
 
+def test_gdelt_retries_on_read_timeout(monkeypatch):
+    """Transient ReadTimeout should be retried, not bubble up immediately."""
+    monkeypatch.setattr(gdelt_src, "_RETRY_DELAYS", (0.0,))
+    calls = {"n": 0}
+
+    def flaky_get(*args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise requests.ReadTimeout("simulated slow API")
+
+        class FakeResp:
+            status_code = 200
+
+            def json(self):
+                return _GDELT_PAYLOAD
+
+            def raise_for_status(self):
+                pass
+
+        return FakeResp()
+
+    monkeypatch.setattr(gdelt_src.requests, "get", flaky_get)
+    items = gdelt_src.fetch_news("BTC")
+    assert len(items) == 2
+    assert calls["n"] == 2
+
+
+def test_gdelt_read_timeout_after_all_retries_raises(monkeypatch):
+    """If every attempt times out, the last exception bubbles up."""
+    monkeypatch.setattr(gdelt_src, "_RETRY_DELAYS", (0.0, 0.0))
+
+    def always_timeout(*args, **kwargs):
+        raise requests.ReadTimeout("simulated dead API")
+
+    monkeypatch.setattr(gdelt_src.requests, "get", always_timeout)
+    with pytest.raises(requests.ReadTimeout):
+        gdelt_src.fetch_news("BTC")
+
+
 # --------------- Finnhub ---------------
 
 

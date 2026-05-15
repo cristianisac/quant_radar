@@ -125,6 +125,29 @@ phases:
       - id: tests
         title: 92 tests passing in the sandbox
         status: done
+  - id: p10
+    title: Source catalog, introspection tools, and edge-case fixes
+    status: done
+    branch: phase-10-source-catalog
+    tasks:
+      - id: catalog
+        title: quant_radar.sources.catalog — static SourceCapability per source
+        status: done
+      - id: list_describe
+        title: tools.list_sources / tools.describe_source
+        status: done
+      - id: probe_history
+        title: tools.probe_history — live earliest/latest/bars via refresh=True
+        status: done
+      - id: fix_refresh_tz
+        title: get_or_fetch(refresh=True) tz normalization fix
+        status: done
+      - id: fix_empty_frame
+        title: _ensure_index handles empty DataFrames
+        status: done
+      - id: fix_gdelt_timeout
+        title: GDELT ReadTimeout/ConnectTimeout retry + 30s timeout
+        status: done
   - id: p9
     title: E2E fixes — bugs surfaced by the first live run
     status: done

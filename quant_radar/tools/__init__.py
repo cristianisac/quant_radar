@@ -27,6 +27,11 @@ from quant_radar.tools.patterns import (
     detect_channels,
     detect_patterns_vision,
 )
+from quant_radar.tools.sources_meta import (
+    describe_source,
+    list_sources,
+    probe_history,
+)
 
 __all__ = [
     "add_annotation",
@@ -37,14 +42,17 @@ __all__ = [
     "compute_indicators",
     "compute_returns",
     "create_dashboard_card",
+    "describe_source",
     "detect_breakouts",
     "detect_channels",
     "detect_patterns_vision",
     "fetch_news",
     "fetch_top_headlines",
+    "list_sources",
     "load_dashboard",
     "new_working_dashboard",
     "persist_dashboard",
+    "probe_history",
     "remove_card",
     "save_card_to_dashboard",
     "score_sentiment",

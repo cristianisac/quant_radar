@@ -52,6 +52,22 @@ Data sources (return `pandas.DataFrame` with `DatetimeIndex` named `timestamp`):
 | `quant_radar.sources.fred_src.fetch_macro_series(series_id, start, end, refresh)` | FRED macro (DGS10, CPIAUCSL, etc.). No API key. |
 | `quant_radar.sources.coinpaprika_src.fetch_ohlcv(coin_id, ...)` | **Deferred** — CoinPaprika moved historical OHLCV behind a paid plan; the free tier returns 402. Use `binance_src` for crypto instead. |
 
+Source introspection (Phase 10):
+
+| Tool | Purpose |
+|---|---|
+| `tools.list_sources()` | Return every source with its capabilities (intervals, history, coverage, auth, rate limits, status). Read this at the **start of a session** so you know which source covers what. |
+| `tools.describe_source(name)` | Look up one source's capability by name. |
+| `tools.probe_history(symbol, source="yfinance", kind="ohlcv")` | Hit the API and report the actual earliest/latest bar for a specific asset. Uses `refresh=True` to bypass the cache. Use it when the user asks *"how far back does this go?"* or before fetching a long series for the first time. |
+
+**Capability cheatsheet** (the catalog has the canonical text):
+- **yfinance** — daily/weekly/monthly from listing date (AAPL: 1980+, TSLA: 2010-06-29 IPO, BTC-USD: 2014-09-17). Intraday only 7–730 days back depending on interval. Cache-first; rate limits are aggressive.
+- **binance** — crypto OHLCV from pair listing on Binance (BTCUSDT/ETHUSDT: 2017-08-17, BNBUSDT: 2017-11-06, SOLUSDT: 2020-08-11). 1200 req-weight/min. No key.
+- **fred** — macro with native frequency per series (DGS10 daily from 1962, CPIAUCSL monthly from 1947, GDP quarterly from 1947). Don't assume daily granularity.
+- **gdelt** — global news, Lucene query syntax, rolling content from 2015. Retries 429 with back-off.
+- **finnhub** — finance news; requires `FINNHUB_API_KEY` env var.
+- **coinpaprika** — deferred (paywalled).
+
 Cache TTL: 5min intraday / 24h daily / 7d macro. Within TTL the cache is authoritative — only `refresh=True` or expired TTL triggers a real fetch.
 
 Analytics (importable as `from quant_radar import tools`):

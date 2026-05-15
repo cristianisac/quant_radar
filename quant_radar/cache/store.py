@@ -64,7 +64,16 @@ def _now() -> datetime:
 
 
 def _ensure_index(df: pd.DataFrame) -> pd.DataFrame:
-    """Ensure DataFrame has a UTC DatetimeIndex named 'timestamp'."""
+    """Ensure DataFrame has a UTC DatetimeIndex named 'timestamp'.
+
+    Empty DataFrames are returned with an empty UTC-aware DatetimeIndex so
+    they're still well-formed (callers may receive empty fetches when a
+    symbol has no data in the requested window).
+    """
+    if len(df) == 0:
+        out = df.copy()
+        out.index = pd.DatetimeIndex([], tz="UTC", name="timestamp")
+        return out
     if isinstance(df.index, pd.DatetimeIndex):
         out = df.copy()
     elif "timestamp" in df.columns:
@@ -192,7 +201,14 @@ def get_or_fetch(
 
     if refresh or cached is None or meta is None:
         fresh = fetcher(start=start, end=end)
-        merged = _merge(cached, fresh) if (cached is not None and not refresh) else fresh
+        # On a forced refresh, drop the cache entirely. Otherwise merge
+        # cache + fresh. Either way the result must be tz-normalized
+        # before _slice compares against a (UTC) start/end.
+        merged = (
+            _ensure_index(fresh)
+            if (refresh or cached is None)
+            else _merge(cached, fresh)
+        )
         write(key, merged, ttl_seconds=ttl_seconds)
         return _slice(merged, start, end)
 

@@ -196,6 +196,28 @@ def test_stale_ttl_triggers_refresh(cache_key, monkeypatch):
     assert len(calls) == 1
 
 
+def test_get_or_fetch_refresh_with_tz_naive_fresh_data(cache_key):
+    """Regression: yfinance returns tz-naive index. With refresh=True the
+    fresh frame skipped tz normalization and _slice crashed comparing
+    against UTC-aware start/end. The fix normalizes the fresh result.
+    """
+    from quant_radar.cache import get_or_fetch
+
+    def fetcher(start=None, end=None):
+        idx = pd.date_range("2025-01-01", periods=5, freq="D")  # tz-naive!
+        return pd.DataFrame({"close": [100.0, 101, 102, 103, 104]}, index=idx)
+
+    out = get_or_fetch(
+        cache_key,
+        fetcher,
+        start=datetime(2025, 1, 2, tzinfo=UTC),
+        end=datetime(2025, 1, 4, tzinfo=UTC),
+        refresh=True,
+    )
+    assert len(out) == 3
+    assert isinstance(out.index, pd.DatetimeIndex) and out.index.tz is not None
+
+
 def test_slice_returns_requested_window(cache_key):
     from quant_radar.cache import get_or_fetch, write
 

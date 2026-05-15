@@ -64,6 +64,27 @@ Status legend: ☐ todo · ◐ in progress · ☑ done · ✕ skipped
 - ☑ Confidence gating built into the return; agent contract in SKILL.md says "don't draw below threshold"
 - ☑ 92 tests passing in the sandbox
 
+## Phase 10 — Source catalog + introspection + edge-case fixes ☑
+
+### Static catalog
+- ☑ `quant_radar.sources.catalog` — `SourceCapability` per source: intervals, history concept, coverage, auth, rate-limit, status, examples
+- ☑ Verified history depths live (probe with `start=2000-01-01`):
+  - **Binance**: BTC/ETH from 2017-08-17 (Binance launch), BNB 2017-11-06, XRP 2018-05-04, SOL 2020-08-11
+  - **yfinance**: AAPL/MSFT/SPY/NVDA from at least 2000-01-03 (and earlier), TSLA 2010-06-29 IPO, BTC-USD 2014-09-17
+  - **FRED**: DGS10 daily from 1962, CPIAUCSL monthly from 1947, GDP quarterly from 1947 — *native frequency varies per series*
+
+### Dynamic introspection
+- ☑ `tools.list_sources()` — every source's capabilities as JSON-serializable dicts
+- ☑ `tools.describe_source(name)` — single-source lookup
+- ☑ `tools.probe_history(symbol, source, kind)` — hits the API with `refresh=True`, reports actual `first`/`last`/`bars` for a specific asset
+
+### Bug fixes surfaced during the catalog work
+- ☑ Cache `get_or_fetch(refresh=True)` was using the fresh DataFrame directly without tz-normalizing → `_slice` crashed comparing tz-naive (yfinance) vs tz-aware (UTC) bounds. Now always normalizes via `_ensure_index` before write/slice.
+- ☑ `_ensure_index` handled empty DataFrames poorly (raised when there was no `timestamp` column and no DatetimeIndex). Now returns an empty UTC-aware DataFrame, preserving the contract for sources that legitimately return no rows.
+- ☑ GDELT `ReadTimeout`/`ConnectTimeout` now retry with the same back-off schedule as 429s; timeout bumped 15s → 30s for the public free endpoint.
+
+- ☑ 144 tests passing in the sandbox; live probe + E2E re-run after fixes (all 12 scenarios green).
+
 ## Phase 9 — E2E fixes (Bugs A/B/C from the live run) ☑
 - ☑ **Bug A** — yfinance defaulted to 1 month (broke 200d SMA). Adapter now injects a sensible default `start` per interval (5y daily / 90d intraday / etc).
 - ☑ **Bug B** — CoinPaprika moved OHLCV behind a paywall (402). Added `binance_src.py` — no key, no signup, 1200 req/min; pagination over `_LIMIT_MAX`; bare base symbols map to `*USDT`. CoinPaprika marked deferred. `ui.data.hydrate` learned the new source.
