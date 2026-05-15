@@ -6,12 +6,14 @@ from quant_radar.tools.analytics import (
 )
 from quant_radar.tools.cards import (
     add_annotation,
+    close_working_dashboard,
     create_dashboard_card,
     load_dashboard,
     new_working_dashboard,
     persist_dashboard,
     remove_card,
     save_card_to_dashboard,
+    update_card,
 )
 from quant_radar.tools.news import (
     fetch_news,
@@ -31,6 +33,7 @@ __all__ = [
     "analyze_indicators",
     "analyze_moving_averages",
     "channel_annotations",
+    "close_working_dashboard",
     "compute_indicators",
     "compute_returns",
     "create_dashboard_card",
@@ -46,4 +49,5 @@ __all__ = [
     "save_card_to_dashboard",
     "score_sentiment",
     "summarize_news",
+    "update_card",
 ]

@@ -66,16 +66,53 @@ def create_dashboard_card(
     return card.model_dump(mode="json")
 
 
-def save_card_to_dashboard(card_id: str | UUID, *, target: Target = "main") -> bool:
-    """Promote a card from working to main (or no-op if already there)."""
-    if target == "main":
-        promoted = store.promote_to_main(card_id)
-        return promoted is not None
-    card = store.working_get(card_id)
+def save_card_to_dashboard(card_id: str | UUID) -> bool:
+    """Promote a working card to the persistent main dashboard.
+
+    Returns True if a card with ``card_id`` existed in working and was
+    copied to main; False otherwise. The working copy is left in place
+    so the user can still see it in the Working tab until the session
+    ends.
+    """
+    promoted = store.promote_to_main(card_id)
+    return promoted is not None
+
+
+def update_card(
+    card_id: str | UUID,
+    *,
+    target: Target = "working",
+    title: str | None = None,
+    chart_spec: dict | ChartSpec | None = None,
+    data_refs: list[dict] | list[DataRef] | None = None,
+    analysis_markdown: str | None = None,
+    news: list[dict] | None = None,
+    layout: dict | LayoutHint | None = None,
+) -> dict[str, Any] | None:
+    """Modify an existing card in-place. Only-set fields are updated.
+
+    Use this for requests like *"Add RSI and ATR to this chart"* — the
+    card's ID stays stable so references on the dashboard remain valid.
+    Returns the updated card dict, or ``None`` if no card with that ID
+    exists in the target dashboard.
+    """
+    card = store.get(card_id, target)
     if card is None:
-        return False
-    store.working_save(card)
-    return True
+        return None
+    if title is not None:
+        card.title = title
+    if chart_spec is not None:
+        card.chart_spec = _coerce_chart_spec(chart_spec)
+    if data_refs is not None:
+        card.data_refs = _coerce_data_refs(data_refs)
+    if analysis_markdown is not None:
+        card.analysis_markdown = analysis_markdown
+    if news is not None:
+        card.news = news
+    if layout is not None:
+        card.layout = _coerce_layout(layout)
+    store.save(card, target)
+    return card.model_dump(mode="json")
 
 
 def remove_card(card_id: str | UUID, *, target: Target = "working") -> bool:
@@ -96,8 +133,21 @@ def load_dashboard(target: Target = "main") -> list[dict[str, Any]]:
 
 
 def new_working_dashboard() -> None:
-    """Start a fresh working dashboard. Existing working cards are dropped."""
+    """Start (or re-open) a working dashboard with no cards.
+
+    Previous working cards are intentionally lost. The working.json file
+    is present after this call so the UI knows the session is open.
+    """
     store.working_reset()
+
+
+def close_working_dashboard() -> None:
+    """End the working session entirely — Working tab disappears.
+
+    Symmetric to ``new_working_dashboard``. Use when the user is done
+    with the scratchpad ("close my working dashboard").
+    """
+    store.working_close()
 
 
 def add_annotation(

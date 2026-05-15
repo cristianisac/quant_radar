@@ -64,15 +64,19 @@ Analytics (importable as `from quant_radar import tools`):
 Cards (Phase 3 — `from quant_radar import tools`):
 | Tool | Purpose |
 |---|---|
-| `tools.create_dashboard_card(type, title, data_refs, chart_spec=None, analysis_markdown=None, news=None, target="working")` | Create + persist a card. Defaults to **working**. |
-| `tools.save_card_to_dashboard(card_id, target="main")` | Promote a working card into main. |
+| `tools.create_dashboard_card(type, title, data_refs, chart_spec=None, analysis_markdown=None, news=None, target="working")` | Create + persist a **new** card. Defaults to working. Returns the card dict (with new UUID). |
+| `tools.update_card(card_id, target="working", *, title=None, chart_spec=None, data_refs=None, analysis_markdown=None, news=None, layout=None)` | Modify an existing card in-place. Only-set fields are updated; the ID stays stable. Use this for *"Add RSI and ATR to this chart"*. Returns the updated card dict, or `None` if the id wasn't found. |
+| `tools.save_card_to_dashboard(card_id)` | Promote a working card into main. Main-only; no `target` kwarg. |
 | `tools.remove_card(card_id, target="working")` | Delete by id. |
 | `tools.add_annotation(card_id, annotation, target="working")` | Append a user-drawn line/shape/text. |
 | `tools.load_dashboard(target="main")` | Return all cards as JSON dicts. |
 | `tools.persist_dashboard(target="working")` | Return current card count (write-through; mostly a confirm). |
-| `tools.new_working_dashboard()` | Wipe working — previous cards intentionally lost. |
+| `tools.new_working_dashboard()` | Start (or re-open) a working session — empty. Working tab appears in the viewer immediately. |
+| `tools.close_working_dashboard()` | End the working session entirely — Working tab disappears. Symmetric to `new_working_dashboard`. |
 
 Card types: `chart`, `news`, `sentiment`, `analysis`, `combo`. Card specs are tiny — they reference data via `DataRef` (source/kind/name/interval), never embed it.
+
+**Lifecycle.** Working tab is shown if `working.json` exists (open session). `new_working_dashboard` opens it (empty list); `close_working_dashboard` removes the file. The viewer auto-refreshes both states.
 
 Viewer (Phase 4):
 - Run with `make docker-ui` → opens at `http://localhost:8501`.

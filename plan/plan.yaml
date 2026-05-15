@@ -125,6 +125,23 @@ phases:
       - id: tests
         title: 92 tests passing in the sandbox
         status: done
+  - id: p7
+    title: Card-update and working-session fixes
+    status: done
+    branch: phase-7-card-update-fixes
+    tasks:
+      - id: update_card
+        title: tools.update_card with stable id
+        status: done
+      - id: close_working
+        title: tools.close_working_dashboard + working_is_open
+        status: done
+      - id: ui_tab_visibility
+        title: Working tab visible while working.json exists
+        status: done
+      - id: tighten_save
+        title: save_card_to_dashboard main-only
+        status: done
   - id: p6
     title: News + sentiment
     status: done

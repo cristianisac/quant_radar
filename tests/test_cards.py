@@ -156,9 +156,15 @@ def test_create_dashboard_card_default_target_is_working():
 
 def test_save_card_to_dashboard_promotes_to_main():
     created = tools.create_dashboard_card(type="analysis", title="t", analysis_markdown="x")
-    ok = tools.save_card_to_dashboard(created["id"], target="main")
+    ok = tools.save_card_to_dashboard(created["id"])
     assert ok is True
     assert len(tools.load_dashboard("main")) == 1
+
+
+def test_save_card_to_dashboard_missing_returns_false():
+    from uuid import uuid4
+
+    assert tools.save_card_to_dashboard(uuid4()) is False
 
 
 def test_remove_card_from_working():
@@ -204,3 +210,86 @@ def test_add_annotation_no_chart_spec_returns_false():
     )
     ok = tools.add_annotation(created["id"], {"kind": "hline", "points": [[0, 0]]})
     assert ok is False
+
+
+# --------------- update_card ---------------
+
+
+def test_update_card_partial_update_keeps_id_and_other_fields():
+    created = tools.create_dashboard_card(
+        type="chart",
+        title="orig",
+        data_refs=[{"source": "yfinance", "kind": "ohlcv", "name": "BTC-USD"}],
+        chart_spec={"overlays": ["sma_50"], "subplots": []},
+    )
+    updated = tools.update_card(
+        created["id"],
+        chart_spec={"overlays": ["sma_50", "sma_200"], "subplots": ["rsi", "atr"]},
+    )
+    assert updated is not None
+    assert updated["id"] == created["id"]
+    assert updated["title"] == "orig"  # untouched
+    assert updated["chart_spec"]["overlays"] == ["sma_50", "sma_200"]
+    assert updated["chart_spec"]["subplots"] == ["rsi", "atr"]
+    assert updated["data_refs"] == created["data_refs"]
+
+
+def test_update_card_title_only():
+    created = tools.create_dashboard_card(
+        type="analysis", title="orig", analysis_markdown="x"
+    )
+    updated = tools.update_card(created["id"], title="renamed")
+    assert updated is not None
+    assert updated["title"] == "renamed"
+    assert updated["analysis_markdown"] == "x"
+
+
+def test_update_card_missing_returns_none():
+    from uuid import uuid4
+
+    assert tools.update_card(uuid4(), title="x") is None
+
+
+def test_update_card_in_main_target():
+    created = tools.create_dashboard_card(
+        type="analysis", title="orig", analysis_markdown="x", target="main"
+    )
+    updated = tools.update_card(
+        created["id"], target="main", analysis_markdown="new text"
+    )
+    assert updated is not None
+    assert updated["analysis_markdown"] == "new text"
+    main = tools.load_dashboard("main")
+    assert main[0]["analysis_markdown"] == "new text"
+
+
+# --------------- working session lifecycle ---------------
+
+
+def test_working_open_after_new_even_when_empty():
+    tools.new_working_dashboard()
+    assert store.working_is_open() is True
+    assert tools.load_dashboard("working") == []
+
+
+def test_close_working_dashboard_removes_file():
+    tools.create_dashboard_card(type="analysis", title="t", analysis_markdown="x")
+    assert store.working_is_open() is True
+    tools.close_working_dashboard()
+    assert store.working_is_open() is False
+    assert tools.load_dashboard("working") == []
+
+
+def test_close_working_dashboard_idempotent():
+    tools.close_working_dashboard()
+    tools.close_working_dashboard()
+    assert store.working_is_open() is False
+
+
+def test_new_then_close_lifecycle():
+    tools.new_working_dashboard()
+    assert store.working_is_open() is True
+    tools.create_dashboard_card(type="analysis", title="t", analysis_markdown="x")
+    assert len(tools.load_dashboard("working")) == 1
+    tools.close_working_dashboard()
+    assert store.working_is_open() is False

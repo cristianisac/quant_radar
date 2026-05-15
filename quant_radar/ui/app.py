@@ -137,16 +137,17 @@ def main() -> None:
     st_autorefresh(interval=refresh_sec * 1000, key="dashboard-refresh")
 
     main_cards = store.list_cards("main")
-    working_cards = store.list_cards("working")
+    working_open = store.working_is_open()
+    working_cards = store.list_cards("working") if working_open else []
 
     tab_labels = [f"Main ({len(main_cards)})"]
-    if working_cards:
+    if working_open:
         tab_labels.append(f"Working ({len(working_cards)})")
     tabs = st.tabs(tab_labels)
 
     with tabs[0]:
         _render_dashboard(main_cards, "main", density)
-    if working_cards:
+    if working_open:
         with tabs[1]:
             _render_dashboard(working_cards, "working", density)
 

@@ -12,6 +12,8 @@ from quant_radar.cards.store import (
     promote_to_main,
     remove,
     save,
+    working_close,
+    working_is_open,
     working_reset,
     working_save,
 )
@@ -28,6 +30,8 @@ __all__ = [
     "promote_to_main",
     "remove",
     "save",
+    "working_close",
+    "working_is_open",
     "working_reset",
     "working_save",
 ]

@@ -64,6 +64,13 @@ Status legend: ☐ todo · ◐ in progress · ☑ done · ✕ skipped
 - ☑ Confidence gating built into the return; agent contract in SKILL.md says "don't draw below threshold"
 - ☑ 92 tests passing in the sandbox
 
+## Phase 7 — Card-update + working-session fixes ☑
+- ☑ `tools.update_card(card_id, **fields)` — modify existing card in-place, stable id. Closes the *"Add RSI and ATR to this chart"* gap.
+- ☑ `tools.close_working_dashboard()` — removes `working.json`, Working tab disappears. Symmetric to `new_working_dashboard`.
+- ☑ Viewer tab visibility now keyed on `working.json` existence, not card count — Working tab appears as soon as the session is opened.
+- ☑ `save_card_to_dashboard` tightened to main-only (no more no-op `target="working"` path).
+- ☑ 118 tests passing in the sandbox.
+
 ## Phase 6 — News + sentiment ☑
 - ☑ `sources.gdelt_src` — public GDELT DOC API, no key. Default last-24h timespan; explicit start/end uses `startdatetime`/`enddatetime`.
 - ☑ `sources.finnhub_src` — Finnhub free tier (requires `FINNHUB_API_KEY`); raises a clear error if the key is missing. Both general and company-news endpoints.

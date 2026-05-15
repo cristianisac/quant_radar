@@ -131,8 +131,21 @@ def working_get(card_id: UUID | str) -> Card | None:
 
 
 def working_reset() -> None:
-    """Clear the working dashboard — previous cards are intentionally lost."""
+    """Clear the working dashboard — previous cards are intentionally lost.
+
+    The file is left present (empty list) so the UI knows a working session
+    is open. Use ``working_close`` to end the session entirely.
+    """
     _working_write([])
+
+
+def working_close() -> None:
+    """End the working session entirely — removes ``working.json``."""
+    paths.working_json.unlink(missing_ok=True)
+
+
+def working_is_open() -> bool:
+    return paths.working_json.exists()
 
 
 # --------------------- Cross-store ---------------------
