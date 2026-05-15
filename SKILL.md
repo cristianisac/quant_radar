@@ -47,9 +47,10 @@ _(catalog grows each phase; see `plan/PROGRESS.md` for status)_
 Data sources (return `pandas.DataFrame` with `DatetimeIndex` named `timestamp`):
 | Tool | Purpose |
 |---|---|
-| `quant_radar.sources.yfinance_src.fetch_ohlcv(symbol, interval="1d", start, end, refresh)` | yfinance OHLCV — equities, ETFs, FX, indices, BTC-USD etc. |
+| `quant_radar.sources.yfinance_src.fetch_ohlcv(symbol, interval="1d", start, end, refresh)` | yfinance OHLCV — equities, ETFs, FX, indices. Defaults to 5y of daily history if `start` is omitted. |
+| `quant_radar.sources.binance_src.fetch_ohlcv(symbol, interval="1d", start, end, refresh)` | **Primary crypto source.** Binance public spot API, no key, no signup. Bare symbols (`BTC`, `ETH`, `SOL`) map to `*USDT`; pre-formed pairs (`BTCUSDT`) pass through. |
 | `quant_radar.sources.fred_src.fetch_macro_series(series_id, start, end, refresh)` | FRED macro (DGS10, CPIAUCSL, etc.). No API key. |
-| `quant_radar.sources.coinpaprika_src.fetch_ohlcv(coin_id, start, end, refresh)` | Crypto OHLCV from CoinPaprika (`btc-bitcoin`, `eth-ethereum`, etc.). |
+| `quant_radar.sources.coinpaprika_src.fetch_ohlcv(coin_id, ...)` | **Deferred** — CoinPaprika moved historical OHLCV behind a paid plan; the free tier returns 402. Use `binance_src` for crypto instead. |
 
 Cache TTL: 5min intraday / 24h daily / 7d macro. Within TTL the cache is authoritative — only `refresh=True` or expired TTL triggers a real fetch.
 

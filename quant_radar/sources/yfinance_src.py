@@ -2,13 +2,26 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 
 import pandas as pd
 import yfinance as yf
 
 from quant_radar.cache import CacheKey, get_or_fetch
 from quant_radar.sources.base import ttl_for_interval
+
+# yfinance.download defaults to period="1mo" when both start and end are
+# absent. That's not enough bars for a 200d SMA, which broke the very
+# first user query in the E2E run. Pick a sane default per interval.
+_DEFAULT_LOOKBACK = {
+    "1m": timedelta(days=7),
+    "5m": timedelta(days=60),
+    "15m": timedelta(days=60),
+    "1h": timedelta(days=730),
+    "1d": timedelta(days=5 * 365),
+    "1w": timedelta(days=10 * 365),
+    "1mo": timedelta(days=25 * 365),
+}
 
 SOURCE = "yfinance"
 
@@ -47,9 +60,16 @@ def _normalize(df: pd.DataFrame) -> pd.DataFrame:
     return out.loc[:, cols]  # cache layer handles tz/sort
 
 
+def _default_start(interval: str) -> datetime:
+    delta = _DEFAULT_LOOKBACK.get(interval, timedelta(days=5 * 365))
+    return datetime.now(UTC) - delta
+
+
 def _fetch(
     symbol: str, interval: str, start: datetime | None, end: datetime | None
 ) -> pd.DataFrame:
+    if start is None:
+        start = _default_start(interval)
     raw = yf.download(
         tickers=symbol,
         start=start,

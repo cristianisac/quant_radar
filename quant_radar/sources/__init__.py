@@ -1,4 +1,5 @@
 from quant_radar.sources import (
+    binance_src,
     coinpaprika_src,
     finnhub_src,
     fred_src,
@@ -7,6 +8,7 @@ from quant_radar.sources import (
 )
 
 __all__ = [
+    "binance_src",
     "coinpaprika_src",
     "finnhub_src",
     "fred_src",

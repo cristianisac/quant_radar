@@ -64,6 +64,14 @@ Status legend: ☐ todo · ◐ in progress · ☑ done · ✕ skipped
 - ☑ Confidence gating built into the return; agent contract in SKILL.md says "don't draw below threshold"
 - ☑ 92 tests passing in the sandbox
 
+## Phase 9 — E2E fixes (Bugs A/B/C from the live run) ☑
+- ☑ **Bug A** — yfinance defaulted to 1 month (broke 200d SMA). Adapter now injects a sensible default `start` per interval (5y daily / 90d intraday / etc).
+- ☑ **Bug B** — CoinPaprika moved OHLCV behind a paywall (402). Added `binance_src.py` — no key, no signup, 1200 req/min; pagination over `_LIMIT_MAX`; bare base symbols map to `*USDT`. CoinPaprika marked deferred. `ui.data.hydrate` learned the new source.
+- ☑ **Bug C** — GDELT 429 retry with back-off (1s, 3s); raises only after all retries exhausted.
+- ☑ Cosmetic: `MPLCONFIGDIR=/tmp/matplotlib` in the Dockerfile silences the read-only-config warning.
+- ☑ E2E demo (`scripts/e2e_demo.py`) added and run live — all 12 scenarios green: BTC MA analysis, ETH channel detect (conf 0.833), NVDA YoY (+68%), SOL via Binance (1825 bars), DGS10 (4.46%, 16k bars), news, update_card, save-to-main, new working dashboard, multi-asset screen (MSFT flagged catching-up), vision PNG (5y chart), close working dashboard.
+- ☑ 131 tests passing in the sandbox.
+
 ## Phase 8 — Hardening (pre-mortem mitigations) ☑
 - ☑ SQLite WAL mode in `cards.store._connect` — Streamlit viewer can read while the agent writes; no more "database is locked" risk
 - ☑ Streamlit host port bound to `127.0.0.1:8501` (was `0.0.0.0:8501`) — viewer is loopback-only on the host

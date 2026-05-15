@@ -81,6 +81,29 @@ def test_yfinance_unsupported_interval_raises():
         yfinance_src.fetch_ohlcv("BTC-USD", interval="bogus")
 
 
+def test_yfinance_default_start_is_far_enough_back_for_sma_200():
+    """Regression: yfinance.download defaults to 1mo when start=None,
+    which is not enough bars for an SMA_200. Adapter must set start."""
+    from datetime import UTC, datetime, timedelta
+
+    from quant_radar.sources import yfinance_src
+
+    captured: dict = {}
+
+    def capture(**kwargs):
+        captured.update(kwargs)
+        return _fake_yf_frame()
+
+    with patch.object(yfinance_src.yf, "download", side_effect=capture):
+        yfinance_src.fetch_ohlcv("BTC-USD", interval="1d")
+
+    assert captured["start"] is not None
+    delta = datetime.now(UTC) - captured["start"]
+    assert delta > timedelta(days=365 * 4), (
+        f"daily default lookback should be ≥4y, got {delta.days} days"
+    )
+
+
 # ---------- FRED ----------
 
 

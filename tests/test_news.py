@@ -83,12 +83,30 @@ def test_gdelt_handles_non_json_response():
 
 
 @responses.activate
-def test_gdelt_http_error_propagates():
-    responses.add(
-        responses.GET, gdelt_src._BASE, json={"err": "limited"}, status=429,
-    )
+def test_gdelt_http_error_propagates_after_retries():
+    """Three 429s in a row → raise. Confirms retries don't loop forever."""
+    for _ in range(3):
+        responses.add(
+            responses.GET, gdelt_src._BASE, json={"err": "limited"}, status=429,
+        )
     with pytest.raises(requests.HTTPError):
         gdelt_src.fetch_news("BTC")
+    assert len(responses.calls) == 3
+
+
+@responses.activate
+def test_gdelt_recovers_from_transient_429(monkeypatch):
+    """First call returns 429, retry returns 200."""
+    monkeypatch.setattr(gdelt_src, "_RETRY_DELAYS", (0.0,))  # don't sleep in tests
+    responses.add(
+        responses.GET, gdelt_src._BASE, json={"err": "wait"}, status=429,
+    )
+    responses.add(
+        responses.GET, gdelt_src._BASE, json=_GDELT_PAYLOAD, status=200,
+    )
+    items = gdelt_src.fetch_news("BTC")
+    assert len(items) == 2
+    assert len(responses.calls) == 2
 
 
 # --------------- Finnhub ---------------

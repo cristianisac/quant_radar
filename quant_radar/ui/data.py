@@ -10,13 +10,21 @@ from __future__ import annotations
 import pandas as pd
 
 from quant_radar.cards.spec import DataRef
-from quant_radar.sources import coinpaprika_src, fred_src, yfinance_src
+from quant_radar.sources import binance_src, coinpaprika_src, fred_src, yfinance_src
 
 
 def hydrate(ref: DataRef, *, refresh: bool = False) -> pd.DataFrame:
     """Return the DataFrame referenced by ``ref`` (cache-first)."""
     if ref.source == "yfinance" and ref.kind == "ohlcv":
         return yfinance_src.fetch_ohlcv(
+            ref.name,
+            interval=ref.interval,
+            start=ref.start,
+            end=ref.end,
+            refresh=refresh,
+        )
+    if ref.source == "binance" and ref.kind == "ohlcv":
+        return binance_src.fetch_ohlcv(
             ref.name,
             interval=ref.interval,
             start=ref.start,

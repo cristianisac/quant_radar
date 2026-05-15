@@ -1,5 +1,13 @@
 """CoinPaprika adapter — historical OHLCV for crypto via REST API.
 
+.. warning::
+   CoinPaprika moved historical OHLCV behind a paid plan in 2025. The
+   ``/v1/coins/<coin_id>/ohlcv/historical`` endpoint returns
+   ``402 Payment Required`` for free-tier callers. This adapter is kept
+   for callers with a paid plan, but the default crypto source in
+   ``quant_radar`` is now :mod:`quant_radar.sources.binance_src`. See
+   ``SKILL.md`` for the routing convention.
+
 Public endpoint: ``https://api.coinpaprika.com/v1/coins/<coin_id>/ohlcv/historical``.
 ``coin_id`` is the CoinPaprika identifier, e.g. ``btc-bitcoin``, ``eth-ethereum``.
 """

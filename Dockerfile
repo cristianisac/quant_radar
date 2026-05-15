@@ -3,7 +3,8 @@ FROM python:3.13-slim AS base
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    MPLCONFIGDIR=/tmp/matplotlib
 
 WORKDIR /app
 
@@ -24,5 +25,6 @@ COPY --chown=radar:radar quant_radar/ ./quant_radar/
 RUN pip install --user -e ".[dev]"
 
 COPY --chown=radar:radar tests/ ./tests/
+COPY --chown=radar:radar scripts/ ./scripts/
 
 CMD ["pytest", "-q", "-p", "no:cacheprovider"]
