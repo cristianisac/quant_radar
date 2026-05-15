@@ -40,14 +40,35 @@ Then call the corresponding tool(s). If confidence is below threshold, do not dr
 
 ## Tools
 
-_(catalog will be filled in as phases land; see `plan/PROGRESS.md`)_
+_(catalog grows each phase; see `plan/PROGRESS.md` for status)_
 
-Planned for Phase 1+:
-- `fetch_ohlcv`, `fetch_time_series`, `fetch_macro_series`
-- `compute_returns`, `compute_indicators`, `analyze_moving_averages`
-- `create_dashboard_card`, `save_card_to_dashboard`, `remove_card`, `enlarge_card`, `persist_dashboard`, `load_dashboard`
-- `detect_channels`, `detect_breakouts`, `detect_patterns_vision`
-- `fetch_news`, `summarize_news`, `score_sentiment`
+**Available now (Phase 1):**
+
+| Tool | Purpose |
+|---|---|
+| `quant_radar.cache.get_or_fetch(key, fetcher, ...)` | Read from disk cache or call fetcher for the missing range. Pass `refresh=True` to force. |
+| `quant_radar.sources.yfinance_src.fetch_ohlcv(symbol, interval="1d", start, end, refresh)` | yfinance OHLCV — equities, ETFs, FX, indices, BTC-USD etc. |
+| `quant_radar.sources.fred_src.fetch_macro_series(series_id, start, end, refresh)` | FRED macro (DGS10, CPIAUCSL, etc.). No API key. |
+| `quant_radar.sources.coinpaprika_src.fetch_ohlcv(coin_id, start, end, refresh)` | Crypto OHLCV from CoinPaprika (`btc-bitcoin`, `eth-ethereum`, etc.). |
+
+Cache TTL: 5min intraday / 24h daily / 7d macro. Within TTL the cache is authoritative — only `refresh=True` or expired TTL triggers a real fetch.
+
+**Planned for later phases:**
+- Phase 2: `compute_returns`, `compute_indicators`, `analyze_moving_averages`
+- Phase 3: `create_dashboard_card`, `save_card_to_dashboard`, `remove_card`, `enlarge_card`, `persist_dashboard`, `load_dashboard`
+- Phase 5: `detect_channels`, `detect_breakouts`, `detect_patterns_vision`
+- Phase 6: `fetch_news`, `summarize_news`, `score_sentiment`
+
+## Running fetches safely
+
+Any tool that hits a real external API should be exercised inside the Docker sandbox:
+
+```bash
+make docker-shell   # then call the tools from a Python REPL
+make docker-test    # full test suite in the sandbox
+```
+
+The container is read-only with dropped capabilities; only `./data` is writable. Malicious responses cannot persist outside the cache.
 
 ## Git etiquette (binding for any Claude session)
 

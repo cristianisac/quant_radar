@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.pyright_cache/
+.git/
+.gitignore
+data/cache/
+data/cards/
+.DS_Store
+.env
+.env.*
+docs/

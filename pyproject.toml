@@ -9,14 +9,25 @@ dependencies = [
     "pandas>=2.2",
     "pyarrow>=15.0",
     "platformdirs>=4.0",
+    "yfinance>=0.2.40",
+    "requests>=2.32",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
+    "pytest-mock>=3.12",
+    "responses>=0.25",
     "ruff>=0.6",
     "pyright>=1.1",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "network: hits real network/API; skipped by default",
+]
+addopts = "-m 'not network'"
 
 [build-system]
 requires = ["hatchling"]
@@ -38,6 +49,3 @@ pythonVersion = "3.11"
 include = ["quant_radar", "tests"]
 venvPath = "."
 venv = ".venv"
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]

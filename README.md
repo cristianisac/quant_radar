@@ -26,9 +26,22 @@ SKILL.md            # instructions for Claude Code sessions
 ## Local setup
 
 ```bash
-uv venv
-uv pip install -e ".[dev]"
+make install        # uv venv + editable install with dev deps
+make check          # ruff + pyright + pytest
 ```
+
+## Sandboxed mode (recommended for any real API call)
+
+External data sources can return malicious payloads. Run them inside the container:
+
+```bash
+make docker-build   # one-time
+make docker-test    # run the full suite inside the sandbox
+make docker-shell   # python REPL inside the sandbox
+```
+
+The container is `--read-only`, drops all Linux capabilities, has
+`no-new-privileges`, and only bind-mounts `./data` for the cache.
 
 ## Working agreement
 

@@ -1,0 +1,43 @@
+# quant_radar — sandboxed runtime.
+#
+# Goals:
+#   - All external fetches and tests run inside the container so any
+#     malicious response can only touch a sandboxed FS, not your host.
+#   - Data cache is bind-mounted to ./data so cached parquet survives runs.
+#   - Network egress is allowed (we *do* need to hit yfinance, FRED, etc.)
+#     but `read_only: true` + no-new-privileges + dropped capabilities keep
+#     anything that exploits a response from persisting elsewhere.
+
+services:
+  tests:
+    build: .
+    image: quant-radar:dev
+    command: ["pytest", "-q"]
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp
+    volumes:
+      - ./data:/app/data
+      - ./tests:/app/tests:ro
+      - ./quant_radar:/app/quant_radar:ro
+
+  shell:
+    build: .
+    image: quant-radar:dev
+    command: ["python"]
+    stdin_open: true
+    tty: true
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp
+    volumes:
+      - ./data:/app/data
+      - ./quant_radar:/app/quant_radar:ro

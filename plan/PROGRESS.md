@@ -4,26 +4,27 @@ _Last updated: 2026-05-15_
 
 Status legend: ☐ todo · ◐ in progress · ☑ done · ✕ skipped
 
-## Phase 0 — Repo scaffold ◐
+## Phase 0 — Repo scaffold ☑
 - ☑ `pyproject.toml` with uv + dev deps
-- ☑ `.gitignore` (3-layer protection: dir, extensions, future pre-commit hook)
+- ☑ `.gitignore` (3-layer protection)
 - ☑ `README.md`
 - ☑ `SKILL.md` v1 (agent contract + git etiquette)
 - ☑ `plan/PROGRESS.md` and `plan/plan.yaml`
-- ☑ Package skeleton: `quant_radar/{core,sources,cache,analytics,tools,cards,dashboard,ui}`
+- ☑ Package skeleton
 - ☑ Pydantic types: `TimeSeries`, `OHLCV`, `NewsItem`
-- ☑ Path config (`quant_radar.core.config.paths`)
-- ☑ Smoke tests
-- ◐ Lint + typecheck + tests green
-- ☐ Initial commit, branch `phase-0-scaffold`, push to GitLab
+- ☑ Path config
+- ☑ Smoke tests (6 passing)
+- ☑ Committed and pushed on branch `phase-0-scaffold`
 
-## Phase 1 — Cache + sources ☐
-- ☐ `cache.store` — read/write parquet by key, merge-append, TTL
-- ☐ `sources.base` — Protocol + registry
-- ☐ `sources.yfinance` adapter (prices/OHLCV)
-- ☐ `sources.fred` adapter (macro)
-- ☐ `sources.coinpaprika` adapter (crypto)
-- ☐ Tests for each source (mocked HTTP)
+## Phase 1 — Cache + sources + sandbox ☑
+- ☑ `cache.store` — parquet store, smart merge, TTL-gated refresh
+- ☑ `sources.base` — TTL constants
+- ☑ `sources.yfinance_src` — OHLCV adapter
+- ☑ `sources.fred_src` — macro via fredgraph.csv (no API key)
+- ☑ `sources.coinpaprika_src` — crypto OHLCV via REST
+- ☑ Tests: 26 passing (cache: 10, sources: 10 mocked, smoke: 6)
+- ☑ Dockerfile + docker-compose.yml + Makefile for sandboxed runs
+- ☑ Tests verified inside the sandboxed container
 
 ## Phase 2 — Indicators ☐
 - ☐ `analytics.indicators` (pandas-ta wrappers)

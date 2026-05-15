@@ -1,0 +1,73 @@
+"""CoinPaprika adapter — historical OHLCV for crypto via REST API.
+
+Public endpoint: ``https://api.coinpaprika.com/v1/coins/<coin_id>/ohlcv/historical``.
+``coin_id`` is the CoinPaprika identifier, e.g. ``btc-bitcoin``, ``eth-ethereum``.
+"""
+
+from __future__ import annotations
+
+from datetime import UTC, datetime
+
+import pandas as pd
+import requests
+
+from quant_radar.cache import CacheKey, get_or_fetch
+from quant_radar.sources.base import TTL_DAILY_SEC
+
+SOURCE = "coinpaprika"
+_BASE = "https://api.coinpaprika.com/v1"
+_TIMEOUT = 15
+
+
+def _to_unix(dt: datetime | None, default: datetime) -> int:
+    if dt is None:
+        dt = default
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=UTC)
+    return int(dt.timestamp())
+
+
+def _fetch(
+    coin_id: str, start: datetime | None, end: datetime | None
+) -> pd.DataFrame:
+    now = datetime.now(UTC)
+    one_year_ago = now.replace(year=now.year - 1)
+    params = {
+        "start": _to_unix(start, one_year_ago),
+        "end": _to_unix(end, now),
+    }
+    url = f"{_BASE}/coins/{coin_id}/ohlcv/historical"
+    resp = requests.get(url, params=params, timeout=_TIMEOUT)
+    resp.raise_for_status()
+    data = resp.json()
+    if not data:
+        return pd.DataFrame()
+    df = pd.DataFrame(data)
+    df["timestamp"] = pd.to_datetime(df["time_open"], utc=True)
+    keep = ["timestamp", "open", "high", "low", "close", "volume"]
+    df = df[[c for c in keep if c in df.columns]].set_index("timestamp")
+    df.index.name = "timestamp"
+    return df.sort_index()
+
+
+def fetch_ohlcv(
+    coin_id: str,
+    *,
+    start: datetime | None = None,
+    end: datetime | None = None,
+    refresh: bool = False,
+) -> pd.DataFrame:
+    """Fetch daily OHLCV bars for ``coin_id`` from CoinPaprika, cached on disk."""
+    key = CacheKey(source=SOURCE, kind="ohlcv", name=coin_id, interval="1d")
+
+    def fetcher(start: datetime | None = None, end: datetime | None = None) -> pd.DataFrame:
+        return _fetch(coin_id, start, end)
+
+    return get_or_fetch(
+        key,
+        fetcher,
+        start=start,
+        end=end,
+        refresh=refresh,
+        ttl_seconds=TTL_DAILY_SEC,
+    )

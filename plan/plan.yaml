@@ -2,46 +2,31 @@ last_updated: 2026-05-15
 phases:
   - id: p0
     title: Repo scaffold
-    status: in_progress
+    status: done
     branch: phase-0-scaffold
+  - id: p1
+    title: Cache + data sources + Docker sandbox
+    status: done
+    branch: phase-1-cache-sources
     tasks:
-      - id: pyproject
-        title: pyproject.toml with uv + dev deps
+      - id: cache_store
+        title: Parquet cache with smart merge and TTL
         status: done
-      - id: gitignore
-        title: .gitignore with 3-layer data protection
+      - id: sources_yfinance
+        title: yfinance OHLCV adapter
         status: done
-      - id: readme
-        title: README.md
+      - id: sources_fred
+        title: FRED macro adapter (no API key)
         status: done
-      - id: skill
-        title: SKILL.md v1
-        status: done
-      - id: plan_files
-        title: plan/PROGRESS.md and plan.yaml
-        status: done
-      - id: pkg_skeleton
-        title: Package subdirs
-        status: done
-      - id: types
-        title: TimeSeries, OHLCV, NewsItem Pydantic models
-        status: done
-      - id: config
-        title: paths config
+      - id: sources_coinpaprika
+        title: CoinPaprika crypto OHLCV adapter
         status: done
       - id: tests
-        title: Phase 0 smoke tests
+        title: 26 tests green (cache + sources + smoke)
         status: done
-      - id: green
-        title: Lint, typecheck, tests all green
-        status: in_progress
-      - id: push
-        title: First commit and push to GitLab
-        status: todo
-  - id: p1
-    title: Cache + data sources
-    status: todo
-    branch: phase-1-cache-sources
+      - id: docker
+        title: Sandboxed container for fetches and tests
+        status: done
   - id: p2
     title: Indicators and TA tools
     status: todo
