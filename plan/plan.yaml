@@ -125,6 +125,20 @@ phases:
       - id: tests
         title: 92 tests passing in the sandbox
         status: done
+  - id: p11
+    title: Durable source-onboarding policy + GDELT verdict
+    status: done
+    branch: phase-11-source-policy
+    tasks:
+      - id: gdelt_probe
+        title: Definitive GDELT reliability probe (~83% success, 7-87s latency)
+        status: done
+      - id: skill_md_checklist
+        title: 12-step "adding a new source" checklist with codified pitfalls
+        status: done
+      - id: catalog_realism
+        title: GDELT catalog entry updated with reliability + OR-query caveat
+        status: done
   - id: p10
     title: Source catalog, introspection tools, and edge-case fixes
     status: done

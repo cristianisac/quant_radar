@@ -62,11 +62,78 @@ Source introspection (Phase 10):
 
 **Capability cheatsheet** (the catalog has the canonical text):
 - **yfinance** — daily/weekly/monthly from listing date (AAPL: 1980+, TSLA: 2010-06-29 IPO, BTC-USD: 2014-09-17). Intraday only 7–730 days back depending on interval. Cache-first; rate limits are aggressive.
-- **binance** — crypto OHLCV from pair listing on Binance (BTCUSDT/ETHUSDT: 2017-08-17, BNBUSDT: 2017-11-06, SOLUSDT: 2020-08-11). 1200 req-weight/min. No key.
+- **binance** — crypto OHLCV from pair listing on Binance (BTCUSDT/ETHUSDT: 2017-08-17, BNBUSDT: 2017-11-06, SOLUSDT: 2020-08-11). 1200 req-weight/min. No key. **Most reliable source.**
 - **fred** — macro with native frequency per series (DGS10 daily from 1962, CPIAUCSL monthly from 1947, GDP quarterly from 1947). Don't assume daily granularity.
-- **gdelt** — global news, Lucene query syntax, rolling content from 2015. Retries 429 with back-off.
-- **finnhub** — finance news; requires `FINNHUB_API_KEY` env var.
+- **gdelt** — global news, Lucene query syntax, rolling content from 2015. Live-tested at ~83% reliability with high latency variance (7–87s). Free-tier IP rate limit bites fast. **Avoid `OR` queries** — they consistently return 0 items in our tests; prefer single terms, `AND`, or quoted phrases. Treat as opportunistic, not critical-path.
+- **finnhub** — finance news; requires `FINNHUB_API_KEY` env var. **Use this when news matters** — higher rate limits + curated coverage.
 - **coinpaprika** — deferred (paywalled).
+
+## Adding a new data source — checklist
+
+When adding any new API source to `quant_radar`, walk this checklist. Every item is the codified version of a bug or surprise we hit while building the existing sources — skip at your peril.
+
+### 1. Authentication
+- [ ] Free, no key → easiest path.
+- [ ] Free with registration → require an env var (e.g. `FINNHUB_API_KEY`); raise a clear `RuntimeError` if missing.
+- [ ] Paid only → mark `status: deferred` or `paid-only` in the catalog and route the agent away.
+
+### 2. Sensible defaults
+- [ ] If the API defaults to a short lookback when `start` is omitted, **override it** in the adapter. yfinance defaults to ~1 month → SMA_200 is impossible → every chart silently wrong. Use the same per-interval defaults pattern (`_DEFAULT_LOOKBACK`) we have in `yfinance_src` and `binance_src` (5y daily / 90d intraday).
+- [ ] Map our standard intervals (`1m`, `5m`, `15m`, `1h`, `1d`, `1w`, `1mo`) to the source's native names. Raise `ValueError` for unsupported intervals.
+
+### 3. Symbol normalization
+- [ ] Define one canonical form per source. Convert user-friendly input at the adapter boundary. Binance: `BTC` → `BTCUSDT`. yfinance crypto: `BTC` → `BTC-USD`. CoinGecko: `bitcoin`. Pin this once; the agent never has to guess.
+- [ ] Guard against degenerate cases — e.g. `BTC` alone matches the `BTC` quote suffix; require `len(symbol) > len(suffix)` before pass-through.
+
+### 4. Response normalization
+- [ ] Return `pandas.DataFrame` with a **UTC-aware `DatetimeIndex` named `timestamp`**.
+- [ ] Lowercase column names: `open`, `high`, `low`, `close`, `volume` for OHLCV; `value` for single-series macro.
+- [ ] Empty responses → return an empty DataFrame, do not raise. The cache (`_ensure_index`) tolerates them.
+
+### 5. Caching
+- [ ] Wire through `quant_radar.cache.get_or_fetch(CacheKey(source, kind, name, interval), fetcher, ttl_seconds=...)`.
+- [ ] TTL via `quant_radar.sources.base.ttl_for_interval(interval)` (intraday 5min, daily 24h) or `TTL_MACRO_SEC` (7d).
+
+### 6. Error handling
+- [ ] `resp.raise_for_status()` on all HTTP calls.
+- [ ] **Retry with back-off** for `429`, `5xx`, `requests.ReadTimeout`, `requests.ConnectTimeout`. Pattern: a `_RETRY_DELAYS = (1.0, 3.0)` tuple iterated with `None` as final sentinel — see `gdelt_src` for the canonical version.
+- [ ] **Timeout**: 30s for free / public APIs (often slow), 15s for paid / fast ones.
+
+### 7. Pagination (only if applicable)
+- [ ] If the API caps page size (Binance: 1000 klines), paginate. Advance the cursor by `last_close_ms + 1`. Stop on short pages or no progress.
+- [ ] Sleep briefly between pages (`time.sleep(0.05)`) to be polite.
+
+### 8. Live verification (mandatory before commit)
+- [ ] Run `tools.probe_history("<sample symbol>", source="<name>", kind="<ohlcv|macro|...>")` from `make docker-shell`.
+- [ ] Verify earliest, latest, total bars for **at least 3 sample symbols** (don't generalize from one).
+- [ ] Note the **native frequency** of the data — FRED's CPIAUCSL is monthly, GDP is quarterly. Don't assume daily.
+- [ ] Confirm the response shape matches our normalization contract.
+
+### 9. Catalog entry (required)
+- [ ] Add a `SourceCapability` to `quant_radar/sources/catalog.py` with the verified history depths, intervals, coverage, auth, rate-limit, status, and example symbols.
+- [ ] Set `status` to `active`, `deferred`, or `paid-only`. `notes` for any caveat.
+
+### 10. UI plumbing
+- [ ] Teach `quant_radar/ui/data.py:hydrate` how to route a `DataRef(source="<new>")` to the new adapter. Without this the viewer can't render cards from your source.
+
+### 11. Tests
+- [ ] **Mock HTTP** with `responses` — never hit the live API in pytest.
+- [ ] Cover at minimum: cold call, warm-cache hit, `refresh=True`, error propagation, pagination (if applicable), unsupported interval, missing auth (if applicable).
+- [ ] Optional `@pytest.mark.network` test for a live smoke (skipped by default; the project's `addopts` filter excludes them).
+
+### 12. SKILL.md update
+- [ ] Add the new source to the data-sources table and the capability cheatsheet above.
+
+### Common pitfalls (already burned us — don't repeat)
+
+- **Default lookback ≠ enough bars for indicators.** Adapter must override when the API's default is short. *(Bug A, Phase 9 — yfinance.)*
+- **Tz-naive timestamps from the API + tz-aware slice bounds = crash.** Always normalize via `_ensure_index`. *(Phase 10 fix.)*
+- **Empty responses are real.** Cache and `_ensure_index` must tolerate zero-row frames. *(Phase 10 fix.)*
+- **Native frequency != requested interval.** FRED daily/monthly/quarterly series exist side by side — querying `interval="1d"` doesn't promote a monthly series. Document in the catalog. *(FRED lesson.)*
+- **Free-tier rate limits hit fast.** Retry-on-429 + on-timeout is mandatory, not optional. *(GDELT lesson.)*
+- **Free APIs change pricing.** CoinPaprika moved historical OHLCV behind a paid plan mid-2025. Keep adapters lean so a swap to the next free thing (we chose Binance) is days, not weeks.
+- **Symbol normalization is a one-shot fight.** Pick the canonical form per source up front; never let the agent guess.
+- **Live behavior ≠ test behavior.** Mocked tests can't catch default-lookback bugs, tz-naive bugs, or rate limiting. **Always run the live probe + E2E in Docker before committing a new source.**
 
 Cache TTL: 5min intraday / 24h daily / 7d macro. Within TTL the cache is authoritative — only `refresh=True` or expired TTL triggers a real fetch.
 

@@ -64,6 +64,12 @@ Status legend: ☐ todo · ◐ in progress · ☑ done · ✕ skipped
 - ☑ Confidence gating built into the return; agent contract in SKILL.md says "don't draw below threshold"
 - ☑ 92 tests passing in the sandbox
 
+## Phase 11 — Durable source-onboarding policy + GDELT verdict ☑
+- ☑ `scripts/probe_gdelt.py` — definitive GDELT reliability probe (6 queries × 2 windows = 12 combinations)
+- ☑ **GDELT verdict**: works ~83% of the time, latency 7–87s, `OR` queries return 0 items consistently → marked as opportunistic-only; recommend `finnhub` (free key) for critical news. Catalog updated with the realistic note.
+- ☑ **SKILL.md "Adding a new data source" checklist** — 12-step procedure codifying every bug we hit (default lookback, tz-naive timestamps, empty responses, native frequency, rate limits, paid-tier surprise, symbol normalization, live verification mandate). Bound on every Claude Code session that touches this project.
+- ☑ Cheatsheet block in SKILL.md marks Binance "most reliable", Finnhub "use when news matters", GDELT "opportunistic only".
+
 ## Phase 10 — Source catalog + introspection + edge-case fixes ☑
 
 ### Static catalog

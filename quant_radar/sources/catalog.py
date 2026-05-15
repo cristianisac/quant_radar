@@ -123,12 +123,21 @@ CATALOG: dict[str, SourceCapability] = {
             "start/end."
         ),
         coverage=(
-            "global news (many languages), Lucene-style query syntax "
-            "(supports AND, OR, NEAR, quoted phrases)"
+            "global news (many languages), Lucene-style query syntax. "
+            "Live-tested: single terms, AND, and quoted phrases work; "
+            "OR queries returned 0 items in every test combination — "
+            "prefer AND or single terms until investigated."
         ),
         auth="none",
-        rate_limit="tight; adapter retries 429 with 1s/3s back-off",
-        examples=['BTC', '"AI stocks"', 'Fed AND rates', '"interest rate" NEAR/5 hike'],
+        rate_limit=(
+            "tight; ~83% success rate on free public access; latency "
+            "7–87s; adapter retries 429/timeouts with 1s/3s back-off"
+        ),
+        notes=(
+            "Treat as opportunistic background news, not a critical path. "
+            "For reliable news use finnhub (requires free key)."
+        ),
+        examples=['Bitcoin', '"AI stocks"', 'Fed AND rates', 'Nvidia earnings'],
     ),
     "finnhub": SourceCapability(
         name="finnhub",
