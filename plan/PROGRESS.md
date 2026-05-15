@@ -35,12 +35,12 @@ Status legend: ☐ todo · ◐ in progress · ☑ done · ✕ skipped
 - ☑ 49 tests passing (indicators, returns, MA, tool wrappers)
 - ☑ Docker-only execution policy enforced via `make docker-check`
 
-## Phase 3 — Card persistence ☐
-- ☐ `cards.spec` — Card Pydantic model + DataRef
-- ☐ `cards.store` — SQLite for main, JSON for working
-- ☐ Tools: `create_dashboard_card`, `save_card_to_dashboard`, `remove_card`, `enlarge_card`, `persist_dashboard`, `load_dashboard`
-- ☐ Reload from disk on start
-- ☐ Tests
+## Phase 3 — Card persistence ☑
+- ☑ `cards.spec` — `Card`, `DataRef`, `ChartSpec`, `Annotation`, `LayoutHint`. `extra="forbid"` blocks unknown fields.
+- ☑ `cards.store` — SQLite for main (auto-schema), JSON for working
+- ☑ `tools.create_dashboard_card`, `save_card_to_dashboard` (promote working → main), `remove_card`, `persist_dashboard`, `load_dashboard`, `new_working_dashboard`, `add_annotation`
+- ☑ Reload-on-start via simple read-from-disk
+- ☑ 68 tests passing in the sandbox
 
 ## Phase 4 — Streamlit viewer ☐
 - ☐ Main / Working tabs

@@ -55,8 +55,24 @@ phases:
         status: done
   - id: p3
     title: Card persistence
-    status: todo
+    status: done
     branch: phase-3-cards
+    tasks:
+      - id: spec
+        title: Card, DataRef, ChartSpec, Annotation, LayoutHint
+        status: done
+      - id: store_main
+        title: SQLite store for main dashboard
+        status: done
+      - id: store_working
+        title: JSON store for working dashboard
+        status: done
+      - id: tools
+        title: create / save_to_main / remove / load / new_working / add_annotation
+        status: done
+      - id: tests
+        title: 68 tests passing in the sandbox
+        status: done
   - id: p4
     title: Streamlit viewer
     status: todo
