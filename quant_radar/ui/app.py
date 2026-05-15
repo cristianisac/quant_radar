@@ -101,10 +101,12 @@ def _enlarge_dialog(card_id: str, target: Target) -> None:
         return
     st.subheader(card.title)
     _render_card_body(card, enlarged=True)
-    st.caption(
-        "Drawing tools are enabled in the chart toolbar. To persist a drawn "
-        "shape, ask the agent to save it via `add_annotation`."
-    )
+    if card.type in ("chart", "combo"):
+        st.warning(
+            "⚠️ **Drawings here are visual only — they disappear on refresh.** "
+            "To persist a shape, copy its coordinates and ask the agent to call "
+            "`add_annotation(card_id, ...)`."
+        )
 
 
 def _render_dashboard(cards: list[Card], target: Target, density: int) -> None:

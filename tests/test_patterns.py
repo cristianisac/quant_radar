@@ -73,6 +73,13 @@ def test_detect_channel_random_walk_has_low_confidence_or_no_find():
     assert out["found"] is False or out["confidence"] < 0.7
 
 
+def test_detect_channel_r2_gate_blocks_loose_fits():
+    """High composite confidence isn't enough — both lines must fit individually."""
+    s = _flat_random_walk()
+    out = patterns.detect_channel(s, lookback=60, min_r2=0.9)
+    assert out["found"] is False
+
+
 def test_channel_to_annotation_points_returns_endpoints():
     s = _ascending_channel()
     ch = patterns.detect_channel(s, lookback=60)

@@ -64,6 +64,15 @@ Status legend: ☐ todo · ◐ in progress · ☑ done · ✕ skipped
 - ☑ Confidence gating built into the return; agent contract in SKILL.md says "don't draw below threshold"
 - ☑ 92 tests passing in the sandbox
 
+## Phase 8 — Hardening (pre-mortem mitigations) ☑
+- ☑ SQLite WAL mode in `cards.store._connect` — Streamlit viewer can read while the agent writes; no more "database is locked" risk
+- ☑ Streamlit host port bound to `127.0.0.1:8501` (was `0.0.0.0:8501`) — viewer is loopback-only on the host
+- ☑ `tests/test_skill_md_sync.py` — every `tools.<name>` mentioned in SKILL.md must exist in `tools.__all__`, and every exported tool must be callable. Catches doc/code drift.
+- ☑ Enlarge dialog: caption upgraded to a `st.warning` so users don't expect drawn shapes to persist
+- ☑ Channel detector defaults tightened: composite threshold 0.6 → 0.65; new `min_r2=0.55` gate requires both trendlines to fit individually before `found=True`
+- ☑ SKILL.md is now included in the Docker image (so the sync test can run inside)
+- ☑ 121 tests passing in the sandbox
+
 ## Phase 7 — Card-update + working-session fixes ☑
 - ☑ `tools.update_card(card_id, **fields)` — modify existing card in-place, stable id. Closes the *"Add RSI and ATR to this chart"* gap.
 - ☑ `tools.close_working_dashboard()` — removes `working.json`, Working tab disappears. Symmetric to `new_working_dashboard`.

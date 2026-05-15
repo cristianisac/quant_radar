@@ -125,6 +125,26 @@ phases:
       - id: tests
         title: 92 tests passing in the sandbox
         status: done
+  - id: p8
+    title: Hardening (pre-mortem mitigations)
+    status: done
+    branch: phase-8-hardening
+    tasks:
+      - id: sqlite_wal
+        title: SQLite WAL mode for read/write concurrency
+        status: done
+      - id: loopback_only
+        title: Streamlit host port bound to 127.0.0.1
+        status: done
+      - id: skill_sync
+        title: Test enforces SKILL.md / tools.__all__ stays in sync
+        status: done
+      - id: enlarge_warning
+        title: Enlarge dialog warns drawings are visual-only
+        status: done
+      - id: channel_tightening
+        title: Channel detector threshold 0.65 + min_r2 0.55 gate
+        status: done
   - id: p7
     title: Card-update and working-session fixes
     status: done

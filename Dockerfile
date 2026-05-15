@@ -18,7 +18,7 @@ RUN useradd --create-home --shell /bin/bash radar
 USER radar
 ENV PATH="/home/radar/.local/bin:${PATH}"
 
-COPY --chown=radar:radar pyproject.toml README.md ./
+COPY --chown=radar:radar pyproject.toml README.md SKILL.md ./
 COPY --chown=radar:radar quant_radar/ ./quant_radar/
 
 RUN pip install --user -e ".[dev]"

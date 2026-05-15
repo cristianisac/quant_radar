@@ -53,5 +53,5 @@ docker-shell: docker-build
 	$(DOCKER_RUN_PERSISTENT) quant-radar:dev python
 
 docker-ui: docker-build
-	$(DOCKER_RUN_PERSISTENT) -p 8501:8501 \
+	$(DOCKER_RUN_PERSISTENT) -p 127.0.0.1:8501:8501 \
 		quant-radar:dev streamlit run quant_radar/ui/app.py --server.address 0.0.0.0

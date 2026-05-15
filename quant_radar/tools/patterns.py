@@ -42,7 +42,8 @@ def detect_channels(
     lookback: int = 60,
     swing_distance: int = 5,
     min_touches: int = 3,
-    confidence_threshold: float = 0.6,
+    confidence_threshold: float = 0.65,
+    min_r2: float = 0.55,
 ) -> dict[str, Any]:
     if price_col not in df.columns:
         raise ValueError(f"price column '{price_col}' not in DataFrame")
@@ -52,6 +53,7 @@ def detect_channels(
         swing_distance=swing_distance,
         min_touches=min_touches,
         threshold=confidence_threshold,
+        min_r2=min_r2,
     )
 
 

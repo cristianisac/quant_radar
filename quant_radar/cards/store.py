@@ -38,6 +38,9 @@ def _ensure_dirs() -> None:
 def _connect(db_path: Path | None = None) -> sqlite3.Connection:
     _ensure_dirs()
     conn = sqlite3.connect(db_path or paths.main_db)
+    # WAL lets the Streamlit viewer read while the agent writes — without
+    # this, the viewer's auto-refresh can hit "database is locked".
+    conn.execute("PRAGMA journal_mode=WAL")
     conn.execute(_SCHEMA)
     return conn
 

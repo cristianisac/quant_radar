@@ -27,7 +27,8 @@ ChannelDirection = Literal["ascending", "descending", "sideways", "unknown"]
 DEFAULT_LOOKBACK = 60
 DEFAULT_SWING_DISTANCE = 5
 DEFAULT_MIN_TOUCHES = 3
-DEFAULT_CONFIDENCE_THRESHOLD = 0.6
+DEFAULT_CONFIDENCE_THRESHOLD = 0.65
+DEFAULT_MIN_R2 = 0.55
 
 
 @dataclass
@@ -90,6 +91,7 @@ def detect_channel(
     swing_distance: int = DEFAULT_SWING_DISTANCE,
     min_touches: int = DEFAULT_MIN_TOUCHES,
     threshold: float = DEFAULT_CONFIDENCE_THRESHOLD,
+    min_r2: float = DEFAULT_MIN_R2,
 ) -> dict:
     """Fit a price channel to the last ``lookback`` bars and score it."""
     n_total = len(close)
@@ -147,7 +149,9 @@ def detect_channel(
         Channel(
             found=confidence >= threshold
                   and len(high_idx) >= min_touches // 2 + 1
-                  and len(low_idx) >= min_touches // 2 + 1,
+                  and len(low_idx) >= min_touches // 2 + 1
+                  and r2_up >= min_r2
+                  and r2_lo >= min_r2,
             confidence=float(confidence),
             direction=_classify_direction(slope_up, slope_lo),
             lookback=lookback,
