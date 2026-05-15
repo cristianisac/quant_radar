@@ -29,8 +29,30 @@ phases:
         status: done
   - id: p2
     title: Indicators and TA tools
-    status: todo
+    status: done
     branch: phase-2-indicators
+    tasks:
+      - id: indicators
+        title: sma, ema, rsi, atr, macd (hand-rolled, pure pandas)
+        status: done
+      - id: returns
+        title: compute_returns for 1d/1w/1m/1y/yoy/ytd
+        status: done
+      - id: ma_analysis
+        title: analyze_moving_averages with catching-up + cross detection
+        status: done
+      - id: regime
+        title: RSI state, ATR volatility regime classifiers
+        status: done
+      - id: tools
+        title: Agent-facing wrappers in quant_radar.tools
+        status: done
+      - id: tests
+        title: 49 tests passing in Docker
+        status: done
+      - id: docker_policy
+        title: All execution moved into Docker, enforced via make docker-check
+        status: done
   - id: p3
     title: Card persistence
     status: todo

@@ -23,25 +23,31 @@ plan/               # PROGRESS.md + plan.yaml
 SKILL.md            # instructions for Claude Code sessions
 ```
 
-## Local setup
+## Running anything (Docker only)
+
+All project code runs inside the sandboxed container:
 
 ```bash
-make install        # uv venv + editable install with dev deps
-make check          # ruff + pyright + pytest
-```
-
-## Sandboxed mode (recommended for any real API call)
-
-External data sources can return malicious payloads. Run them inside the container:
-
-```bash
-make docker-build   # one-time
-make docker-test    # run the full suite inside the sandbox
-make docker-shell   # python REPL inside the sandbox
+make docker-build   # one-time (or after dep changes)
+make docker-check   # ruff + pyright + pytest in the sandbox  ← the commit gate
+make docker-test    # just the tests
+make docker-shell   # python REPL in the sandbox
+make docker-ui      # Streamlit UI (later phases)
 ```
 
 The container is `--read-only`, drops all Linux capabilities, has
-`no-new-privileges`, and only bind-mounts `./data` for the cache.
+`no-new-privileges`, and only bind-mounts `./data` for the cache. Malicious
+responses from external APIs cannot persist outside that directory.
+
+## IDE setup (optional, no code execution)
+
+For autocomplete and jump-to-def in your editor:
+
+```bash
+make install-ide    # creates .venv for language servers only
+```
+
+This venv is **not** used to run the code — only for static IDE features.
 
 ## Working agreement
 

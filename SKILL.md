@@ -42,33 +42,47 @@ Then call the corresponding tool(s). If confidence is below threshold, do not dr
 
 _(catalog grows each phase; see `plan/PROGRESS.md` for status)_
 
-**Available now (Phase 1):**
+**Available now (Phases 1–2):**
 
+Data sources (return `pandas.DataFrame` with `DatetimeIndex` named `timestamp`):
 | Tool | Purpose |
 |---|---|
-| `quant_radar.cache.get_or_fetch(key, fetcher, ...)` | Read from disk cache or call fetcher for the missing range. Pass `refresh=True` to force. |
 | `quant_radar.sources.yfinance_src.fetch_ohlcv(symbol, interval="1d", start, end, refresh)` | yfinance OHLCV — equities, ETFs, FX, indices, BTC-USD etc. |
 | `quant_radar.sources.fred_src.fetch_macro_series(series_id, start, end, refresh)` | FRED macro (DGS10, CPIAUCSL, etc.). No API key. |
 | `quant_radar.sources.coinpaprika_src.fetch_ohlcv(coin_id, start, end, refresh)` | Crypto OHLCV from CoinPaprika (`btc-bitcoin`, `eth-ethereum`, etc.). |
 
 Cache TTL: 5min intraday / 24h daily / 7d macro. Within TTL the cache is authoritative — only `refresh=True` or expired TTL triggers a real fetch.
 
+Analytics (importable as `from quant_radar import tools`):
+| Tool | Returns |
+|---|---|
+| `tools.compute_returns(df, periods=("1d","1w","1m","1y","yoy","ytd"))` | `dict[str, float \| None]` |
+| `tools.compute_indicators(df, indicators=("sma_50","sma_200","rsi","atr","macd"))` | enriched DataFrame |
+| `tools.analyze_moving_averages(df, fast_period=50, slow_period=200, asset="X")` | dict with above/below 50d/200d, 50d-vs-200d, catching-up-from-below, golden/death cross, summary |
+| `tools.analyze_indicators(df)` | `{"rsi_state": "overbought\|oversold\|neutral", "volatility_regime": "high\|elevated\|normal\|low"}` |
+
 **Planned for later phases:**
-- Phase 2: `compute_returns`, `compute_indicators`, `analyze_moving_averages`
 - Phase 3: `create_dashboard_card`, `save_card_to_dashboard`, `remove_card`, `enlarge_card`, `persist_dashboard`, `load_dashboard`
 - Phase 5: `detect_channels`, `detect_breakouts`, `detect_patterns_vision`
-- Phase 6: `fetch_news`, `summarize_news`, `score_sentiment`
+- Phase 6: `fetch_news`, `fetch_top_headlines`, `summarize_news`, `score_sentiment`
 
-## Running fetches safely
+## Running code (mandatory: Docker only)
 
-Any tool that hits a real external API should be exercised inside the Docker sandbox:
+**Every command that executes project code runs inside the Docker sandbox.** This includes pytest, ruff, pyright, ad-hoc Python REPLs, agent tool calls, the Streamlit UI, and any source-adapter call. The local `.venv` exists only for IDE language servers (autocomplete, jump-to-def) — it is never used to run the code itself.
 
-```bash
-make docker-shell   # then call the tools from a Python REPL
-make docker-test    # full test suite in the sandbox
-```
+The container is read-only, drops all Linux capabilities, has `no-new-privileges`, has tmpfs for `/tmp`, and only bind-mounts `./data` for the cache. Malicious responses from external APIs cannot persist outside the cache.
 
-The container is read-only with dropped capabilities; only `./data` is writable. Malicious responses cannot persist outside the cache.
+| Task | Command |
+|---|---|
+| Lint + types + tests (commit gate) | `make docker-check` |
+| Just tests | `make docker-test` |
+| Just lint | `make docker-lint` |
+| Just typecheck | `make docker-type` |
+| Python REPL in the sandbox | `make docker-shell` |
+| Streamlit UI in the sandbox | `make docker-ui` (later phases) |
+| Rebuild the image (new dep, code change) | `make docker-build` |
+
+**No phase commits until `make docker-check` is fully green.**
 
 ## Git etiquette (binding for any Claude session)
 

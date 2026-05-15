@@ -19,7 +19,7 @@ dev = [
     "pytest-mock>=3.12",
     "responses>=0.25",
     "ruff>=0.6",
-    "pyright>=1.1",
+    "pyright[nodejs]>=1.1",
 ]
 
 [tool.pytest.ini_options]

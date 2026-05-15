@@ -26,12 +26,14 @@ Status legend: ☐ todo · ◐ in progress · ☑ done · ✕ skipped
 - ☑ Dockerfile + docker-compose.yml + Makefile for sandboxed runs
 - ☑ Tests verified inside the sandboxed container
 
-## Phase 2 — Indicators ☐
-- ☐ `analytics.indicators` (pandas-ta wrappers)
-- ☐ `tools.compute_returns`
-- ☐ `tools.compute_indicators`
-- ☐ `tools.analyze_moving_averages` (above/below, MA cross state, catching-up logic)
-- ☐ Tests with synthetic series
+## Phase 2 — Indicators ☑
+- ☑ `analytics.indicators` — sma, ema, rsi (Wilder), atr (Wilder), macd. Hand-rolled in pure pandas (avoided pandas-ta's Python 3.13 incompatibility)
+- ☑ `analytics.returns` — `compute_returns` over 1d/1w/1m/1y/yoy/ytd
+- ☑ `analytics.ma` — `analyze_moving_averages` answers all spec questions (above/below 50d/200d, 50d vs 200d, catching-up-from-below, golden/death cross)
+- ☑ `analytics.regime` — RSI state, ATR volatility regime
+- ☑ `tools.compute_returns`, `tools.compute_indicators`, `tools.analyze_moving_averages`, `tools.analyze_indicators`
+- ☑ 49 tests passing (indicators, returns, MA, tool wrappers)
+- ☑ Docker-only execution policy enforced via `make docker-check`
 
 ## Phase 3 — Card persistence ☐
 - ☐ `cards.spec` — Card Pydantic model + DataRef

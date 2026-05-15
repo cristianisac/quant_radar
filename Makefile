@@ -7,42 +7,51 @@
 
 DOCKER ?= /Applications/Docker.app/Contents/Resources/bin/docker
 
-.PHONY: install lint type test check ui \
-        docker-build docker-test docker-shell docker-fetch
+.PHONY: install-ide \
+        docker-build docker-check docker-lint docker-type docker-test \
+        docker-shell docker-ui
 
-install:
+# All execution of project code happens in Docker. The venv exists only
+# for IDE language servers (autocomplete, jump-to-def) — never to run
+# the code itself.
+
+install-ide:
 	uv venv
 	uv pip install -e ".[dev]"
 
-lint:
-	.venv/bin/ruff check .
+# Hardening flags applied to every container we run.
+HARDEN = --read-only --tmpfs /tmp --tmpfs /app/data \
+		--security-opt no-new-privileges --cap-drop ALL
 
-type:
-	.venv/bin/pyright
+# Lint/type/test never need the host cache — tests create tmp data via
+# pytest fixtures; lint and type are static. A tmpfs at /app/data keeps
+# any accidental writes ephemeral.
+DOCKER_RUN_EPHEMERAL = $(DOCKER) run --rm $(HARDEN) quant-radar:dev
 
-test:
-	.venv/bin/pytest -q
-
-check: lint type test
-
-ui:
-	.venv/bin/streamlit run quant_radar/ui/app.py
+# Interactive sessions (shell, ui) bind-mount ./data so cached parquet
+# survives between runs. Requires Docker Desktop file-sharing for ~/.
+DOCKER_RUN_PERSISTENT = $(DOCKER) run --rm -it \
+		--read-only --tmpfs /tmp \
+		--security-opt no-new-privileges --cap-drop ALL \
+		-v "$(PWD)/data:/app/data"
 
 docker-build:
 	$(DOCKER) build -t quant-radar:dev .
 
+docker-lint: docker-build
+	$(DOCKER_RUN_EPHEMERAL) ruff check --no-cache .
+
+docker-type: docker-build
+	$(DOCKER_RUN_EPHEMERAL) pyright
+
 docker-test: docker-build
-	$(DOCKER) run --rm \
-		--read-only --tmpfs /tmp \
-		--security-opt no-new-privileges \
-		--cap-drop ALL \
-		-v "$(PWD)/data:/app/data" \
-		quant-radar:dev
+	$(DOCKER_RUN_EPHEMERAL) pytest -q -p no:cacheprovider
+
+docker-check: docker-lint docker-type docker-test
 
 docker-shell: docker-build
-	$(DOCKER) run --rm -it \
-		--read-only --tmpfs /tmp \
-		--security-opt no-new-privileges \
-		--cap-drop ALL \
-		-v "$(PWD)/data:/app/data" \
-		quant-radar:dev python
+	$(DOCKER_RUN_PERSISTENT) quant-radar:dev python
+
+docker-ui: docker-build
+	$(DOCKER_RUN_PERSISTENT) -p 8501:8501 \
+		quant-radar:dev streamlit run quant_radar/ui/app.py --server.address 0.0.0.0
