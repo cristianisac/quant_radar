@@ -13,6 +13,12 @@ from quant_radar.tools.cards import (
     remove_card,
     save_card_to_dashboard,
 )
+from quant_radar.tools.news import (
+    fetch_news,
+    fetch_top_headlines,
+    score_sentiment,
+    summarize_news,
+)
 from quant_radar.tools.patterns import (
     channel_annotations,
     detect_breakouts,
@@ -31,9 +37,13 @@ __all__ = [
     "detect_breakouts",
     "detect_channels",
     "detect_patterns_vision",
+    "fetch_news",
+    "fetch_top_headlines",
     "load_dashboard",
     "new_working_dashboard",
     "persist_dashboard",
     "remove_card",
     "save_card_to_dashboard",
+    "score_sentiment",
+    "summarize_news",
 ]

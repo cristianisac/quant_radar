@@ -64,9 +64,12 @@ Status legend: ☐ todo · ◐ in progress · ☑ done · ✕ skipped
 - ☑ Confidence gating built into the return; agent contract in SKILL.md says "don't draw below threshold"
 - ☑ 92 tests passing in the sandbox
 
-## Phase 6 — News + sentiment ☐
-- ☐ `sources.gdelt`, `sources.finnhub`
-- ☐ `tools.fetch_news`, `tools.fetch_top_headlines`
-- ☐ `tools.summarize_news` (LLM)
-- ☐ `tools.score_sentiment` (LLM-first; FinBERT as flag, deferred)
-- ☐ News card type + renderer
+## Phase 6 — News + sentiment ☑
+- ☑ `sources.gdelt_src` — public GDELT DOC API, no key. Default last-24h timespan; explicit start/end uses `startdatetime`/`enddatetime`.
+- ☑ `sources.finnhub_src` — Finnhub free tier (requires `FINNHUB_API_KEY`); raises a clear error if the key is missing. Both general and company-news endpoints.
+- ☑ `tools.fetch_news` — routes to GDELT (default) or Finnhub (company news, requires start/end)
+- ☑ `tools.fetch_top_headlines` — GDELT global feed or Finnhub general
+- ☑ `tools.summarize_news` — LLM-first: returns `{items, instructions}` for the calling agent to summarize
+- ☑ `tools.score_sentiment` — LLM-first: same shape; takes optional `topic`. FinBERT path deferred behind a future `method` flag
+- ☑ News card type renderer already present from Phase 4
+- ☑ 109 tests passing in the sandbox

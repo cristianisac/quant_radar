@@ -127,5 +127,23 @@ phases:
         status: done
   - id: p6
     title: News + sentiment
-    status: todo
+    status: done
     branch: phase-6-news-sentiment
+    tasks:
+      - id: gdelt
+        title: GDELT adapter (no API key)
+        status: done
+      - id: finnhub
+        title: Finnhub adapter (general + company news)
+        status: done
+      - id: fetch_tools
+        title: fetch_news, fetch_top_headlines
+        status: done
+      - id: llm_tools
+        title: summarize_news, score_sentiment (LLM-first payloads)
+        status: done
+      - id: tests
+        title: 109 tests passing in the sandbox
+        status: done
+    deferred:
+      - FinBERT deterministic sentiment behind method='finbert' flag

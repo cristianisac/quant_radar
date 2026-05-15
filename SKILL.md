@@ -96,8 +96,18 @@ Pattern detection (Phase 5):
 
 Then call the corresponding tool(s). If confidence is below threshold, do not draw — say plainly that no pattern was found at high enough confidence.
 
-**Planned for later phases:**
-- Phase 6: `fetch_news`, `fetch_top_headlines`, `summarize_news`, `score_sentiment`
+News + sentiment (Phase 6):
+
+| Tool | Purpose |
+|---|---|
+| `tools.fetch_news(query, source="gdelt", start, end, max_items=20)` | GDELT (no key) or Finnhub (requires `FINNHUB_API_KEY` + start/end for company news). Returns `list[dict]` of normalized news items. |
+| `tools.fetch_top_headlines(source="gdelt", category="general", max_items=10)` | Latest global headlines (GDELT) or curated finance feed (Finnhub general). |
+| `tools.summarize_news(items)` | **LLM-first**: returns `{items, instructions}`. You (the agent) read the items and write the summary directly. May then call `create_dashboard_card(type="news", news=items, analysis_markdown=summary)` to persist. |
+| `tools.score_sentiment(items, topic=None)` | **LLM-first**: same shape. You score each item bullish/bearish/neutral and produce an overall label. Be conservative — when in doubt, choose neutral. |
+
+The summarize/score tools deliberately don't call any external LLM API; you are the LLM. A deterministic FinBERT scorer can be added later behind a `method="finbert"` flag.
+
+**This is the full tool surface for Phases 1–6.** The product spec is now functionally complete.
 
 ## Running code (mandatory: Docker only)
 
