@@ -104,8 +104,27 @@ phases:
       - persisting drawn shapes back to disk (use add_annotation tool instead)
   - id: p5
     title: Pattern detection (algo + vision)
-    status: todo
+    status: done
     branch: phase-5-patterns
+    tasks:
+      - id: channels
+        title: scipy-based channel detector with confidence
+        status: done
+      - id: breakouts
+        title: last-bar breakout with ATR-multiple filter
+        status: done
+      - id: vision
+        title: matplotlib chart-to-PNG renderer for agent's Read tool
+        status: done
+      - id: tools
+        title: detect_channels / detect_breakouts / detect_patterns_vision / channel_annotations
+        status: done
+      - id: confidence
+        title: thresholds in tool returns; SKILL.md mandates ask-algo-or-vision
+        status: done
+      - id: tests
+        title: 92 tests passing in the sandbox
+        status: done
   - id: p6
     title: News + sentiment
     status: todo

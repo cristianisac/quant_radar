@@ -81,8 +81,22 @@ Viewer (Phase 4):
 - Density slider (1–4 columns), auto-refresh slider (2–30 s).
 - Click ⛶ on a card to enlarge — the enlarged view enables Plotly's draw tools (line, openpath, rect, erase). To persist a shape, ask the agent to call `add_annotation` with the coordinates.
 
+Pattern detection (Phase 5):
+
+| Tool | Returns / behavior |
+|---|---|
+| `tools.detect_channels(df, lookback=60, confidence_threshold=0.6)` | dict with `found`, `confidence`, `slope_upper/lower`, `intercept_upper/lower`, `touches_*`, `r2_*`, `direction`. **Do not draw if `confidence < threshold`.** |
+| `tools.detect_breakouts(df, channel=None, use_atr_filter=True)` | dict with `found`, `direction` ("up"/"down"), `boundary`, `margin`. If `channel` omitted, auto-detected first. |
+| `tools.detect_patterns_vision(df, asset_name, title=None)` | dict with `image_path` and `instructions`. **Then call your Read tool on `image_path`** to view the chart and interpret patterns yourself. No API call. |
+| `tools.channel_annotations(df, channel)` | returns 2 Annotation dicts (upper + lower trendlines) — feed to `add_annotation` to draw the channel on a card. |
+
+**The pattern-detection UX is mandatory.** When the user asks for channels, breakouts, or patterns, **ask first**:
+
+> "Algorithmic detectors, LLM-vision detectors, or both?"
+
+Then call the corresponding tool(s). If confidence is below threshold, do not draw — say plainly that no pattern was found at high enough confidence.
+
 **Planned for later phases:**
-- Phase 5: `detect_channels`, `detect_breakouts`, `detect_patterns_vision`
 - Phase 6: `fetch_news`, `fetch_top_headlines`, `summarize_news`, `score_sentiment`
 
 ## Running code (mandatory: Docker only)

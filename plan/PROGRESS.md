@@ -54,13 +54,15 @@ Status legend: ☐ todo · ◐ in progress · ☑ done · ✕ skipped
 - ◐ Drag-to-move via `streamlit-elements` — deferred (st.columns grid + density slider covers density; drag adds complexity, defer to Phase 4.5 if needed)
 - ◐ Persisting drawn shapes back to disk — currently drawings are visual-only; saving is via the agent calling `add_annotation`
 
-## Phase 5 — Pattern detection ☐
-- ☐ `analytics.channels` (linear regression on swing highs/lows)
-- ☐ `analytics.breakouts`
-- ☐ `tools.detect_channels`, `tools.detect_breakouts`
-- ☐ `tools.detect_patterns_vision` (Claude vision via Bash)
-- ☐ Confidence gating
-- ☐ SKILL.md update: "ask algo / vision / both"
+## Phase 5 — Pattern detection ☑
+- ☑ `analytics.patterns.detect_channel` — scipy.signal.find_peaks for swing points + linregress on highs/lows; confidence = 0.4·parallelism + 0.4·R² + 0.2·touches
+- ☑ `analytics.patterns.detect_breakout` — last-bar vs channel boundary with optional ATR-multiple noise filter
+- ☑ `analytics.patterns.channel_to_annotation_points` — converts channel slopes to (ts, price) trendline endpoints
+- ☑ `analytics.vision.render_chart_png` — matplotlib OHLCV/line rendering, written under `data/cache/vision/`
+- ☑ `tools.detect_channels`, `tools.detect_breakouts`, `tools.detect_patterns_vision`, `tools.channel_annotations`
+- ☑ Vision tool returns `{image_path, instructions}` — the calling Claude session reads the PNG with its own Read tool (no Anthropic SDK / API key needed)
+- ☑ Confidence gating built into the return; agent contract in SKILL.md says "don't draw below threshold"
+- ☑ 92 tests passing in the sandbox
 
 ## Phase 6 — News + sentiment ☐
 - ☐ `sources.gdelt`, `sources.finnhub`

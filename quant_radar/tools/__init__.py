@@ -13,14 +13,24 @@ from quant_radar.tools.cards import (
     remove_card,
     save_card_to_dashboard,
 )
+from quant_radar.tools.patterns import (
+    channel_annotations,
+    detect_breakouts,
+    detect_channels,
+    detect_patterns_vision,
+)
 
 __all__ = [
     "add_annotation",
     "analyze_indicators",
     "analyze_moving_averages",
+    "channel_annotations",
     "compute_indicators",
     "compute_returns",
     "create_dashboard_card",
+    "detect_breakouts",
+    "detect_channels",
+    "detect_patterns_vision",
     "load_dashboard",
     "new_working_dashboard",
     "persist_dashboard",
