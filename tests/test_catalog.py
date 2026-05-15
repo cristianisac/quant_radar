@@ -55,7 +55,7 @@ def test_every_catalog_entry_has_required_fields():
         assert d["name"] == name
         assert isinstance(d["kinds"], list) and d["kinds"]
         assert isinstance(d["intervals"], list)
-        assert d["status"] in ("active", "deferred", "paid-only")
+        assert d["status"] in ("active", "limited", "deferred", "paid-only")
 
 
 def test_coinpaprika_is_marked_deferred():

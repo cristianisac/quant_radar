@@ -1,4 +1,24 @@
 last_updated: 2026-05-15
+
+# Backlog — captured during prior phases, not yet scheduled.
+pending:
+  - id: finnhub_env_passthrough
+    title: Forward FINNHUB_API_KEY through make docker-shell and make docker-ui
+    notes: |
+      Currently the host's FINNHUB_API_KEY env var doesn't reach the
+      container — finnhub_src raises 'key not set'. Two-line Makefile
+      change (add `-e FINNHUB_API_KEY` to DOCKER_RUN_PERSISTENT and the
+      ephemeral runs that may need it). Trivial; deferred so we don't
+      block on it.
+  - id: news_routing_finnhub_primary
+    title: Route news through Finnhub first, GDELT as fallback
+    notes: |
+      Future intent: when FINNHUB_API_KEY is set, tools.fetch_news and
+      tools.fetch_top_headlines should prefer finnhub_src (higher
+      reliability, curated coverage). Fall back to gdelt_src when the
+      key is absent or finnhub raises. This needs source='auto' routing
+      and SKILL.md guidance update.
+
 phases:
   - id: p0
     title: Repo scaffold
@@ -124,6 +144,17 @@ phases:
         status: done
       - id: tests
         title: 92 tests passing in the sandbox
+        status: done
+  - id: p12
+    title: Source-onboarding policy — minimum-history gate
+    status: done
+    branch: phase-12-policy-tighten
+    tasks:
+      - id: min_history
+        title: SKILL.md requires ≥250 daily / 52 weekly / 24 monthly bars
+        status: done
+      - id: status_limited
+        title: 'New ''limited'' status in catalog for short-history sources'
         status: done
   - id: p11
     title: Durable source-onboarding policy + GDELT verdict

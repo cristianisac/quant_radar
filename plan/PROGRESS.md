@@ -4,6 +4,15 @@ _Last updated: 2026-05-15_
 
 Status legend: ☐ todo · ◐ in progress · ☑ done · ✕ skipped
 
+## Pending (backlog, not yet scheduled)
+- ☐ **Finnhub env passthrough** — forward `FINNHUB_API_KEY` from the host through `make docker-shell` / `make docker-ui` (2-line Makefile change).
+- ☐ **News routing: Finnhub primary, GDELT fallback** — when `FINNHUB_API_KEY` is set, prefer `finnhub_src` for reliability; fall back to `gdelt_src` on missing key or failure. Update SKILL.md guidance.
+
+## Phase 12 — Policy tightening: minimum-history gate ☑
+- ☑ SKILL.md checklist §8 now requires the live probe to return ≥250 daily / ≥52 weekly / ≥24 monthly / ≥8 quarterly / ≥5 annual bars on at least one mainstream symbol, or the source must be flagged `status: "limited"`.
+- ☑ Catalog dataclass documents the four valid statuses inline: `active` / `limited` / `deferred` / `paid-only`. Agent guidance: `limited` sources are usable for current-value queries but not for SMAs / trend analysis.
+- ☑ `tests/test_catalog.py` now accepts the new `limited` status value.
+
 ## Phase 0 — Repo scaffold ☑
 - ☑ `pyproject.toml` with uv + dev deps
 - ☑ `.gitignore` (3-layer protection)

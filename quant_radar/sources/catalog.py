@@ -27,7 +27,12 @@ class SourceCapability:
     coverage: str
     auth: str
     rate_limit: str
-    status: str = "active"  # "active" | "deferred" | "paid-only"
+    status: str = "active"  # "active" | "limited" | "deferred" | "paid-only"
+    # "active"    — full coverage, sufficient history for TA (≥250 daily bars)
+    # "limited"   — works, but insufficient history / coverage for trend analysis;
+    #               agent should use for current-value queries only, not for SMAs
+    # "deferred"  — code present but currently unusable (e.g., went paywalled)
+    # "paid-only" — requires a paid plan; key must be supplied externally
     notes: str = ""
     examples: list[str] = field(default_factory=list)
 

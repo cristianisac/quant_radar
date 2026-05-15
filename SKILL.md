@@ -108,6 +108,9 @@ When adding any new API source to `quant_radar`, walk this checklist. Every item
 - [ ] Verify earliest, latest, total bars for **at least 3 sample symbols** (don't generalize from one).
 - [ ] Note the **native frequency** of the data — FRED's CPIAUCSL is monthly, GDP is quarterly. Don't assume daily.
 - [ ] Confirm the response shape matches our normalization contract.
+- [ ] **Minimum-history gate for OHLCV / macro sources.** At least one mainstream symbol must satisfy a 200-period equivalent at the source's native frequency:
+    - daily / weekly / monthly / quarterly / annual → **≥250 / ≥52 / ≥24 / ≥8 / ≥5 bars** respectively
+    - If no symbol clears the bar, the source still ships — but mark it `status: "limited"` in the catalog (instead of `active`) and document the cap in `notes`. The agent will then **not** reach for it for trend analysis or moving averages, but may still use it for current-value queries.
 
 ### 9. Catalog entry (required)
 - [ ] Add a `SourceCapability` to `quant_radar/sources/catalog.py` with the verified history depths, intervals, coverage, auth, rate-limit, status, and example symbols.
