@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Launch both the Streamlit viewer (Docker) and a ttyd terminal (host)
-# that runs Claude Code in the project directory. Loopback-only on both
-# ports — never exposed to the LAN.
+# Production-style launcher: FastAPI (Docker, serves API + built React
+# bundle) + ttyd (host, runs Claude Code). One browser tab — both the
+# dashboard and the embedded terminal live at http://127.0.0.1:8000.
 #
 # Ctrl+C in this terminal stops both.
 
@@ -9,48 +9,54 @@ set -euo pipefail
 
 REPO_DIR="${REPO_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 TTYD_PORT="${TTYD_PORT:-7681}"
-STREAMLIT_PORT="${STREAMLIT_PORT:-8501}"
+API_PORT="${API_PORT:-8000}"
+
+DOCKER_BIN="${DOCKER_BIN:-/Applications/Docker.app/Contents/Resources/bin}"
+export PATH="$DOCKER_BIN:$PATH"
 
 if ! command -v ttyd >/dev/null 2>&1; then
-    echo "Error: ttyd is not installed. Install with: brew install ttyd" >&2
+    echo "Error: ttyd not found. Install: brew install ttyd" >&2
     exit 1
-fi
-if ! command -v claude >/dev/null 2>&1; then
-    echo "Warning: 'claude' CLI not found on PATH. The terminal will still" >&2
-    echo "open but Claude Code won't auto-start. Run 'claude' manually inside." >&2
 fi
 
 cleanup() {
-    if [[ -n "${TTYD_PID:-}" ]]; then
-        kill "$TTYD_PID" 2>/dev/null || true
-        wait "$TTYD_PID" 2>/dev/null || true
-    fi
+    [[ -n "${TTYD_PID:-}" ]] && kill "$TTYD_PID" 2>/dev/null || true
+    [[ -n "${API_PID:-}"  ]] && kill "$API_PID"  2>/dev/null || true
+    wait 2>/dev/null || true
 }
 trap cleanup EXIT INT TERM
 
+cd "$REPO_DIR"
+
 echo "──────────────────────────────────────────────────────────────"
-echo "  ttyd       → http://127.0.0.1:${TTYD_PORT}  (Claude Code shell)"
-echo "  streamlit  → http://127.0.0.1:${STREAMLIT_PORT}  (dashboard + embedded terminal)"
+echo "  app   → http://127.0.0.1:${API_PORT}             (dashboard + API)"
+echo "  ttyd  → http://127.0.0.1:${TTYD_PORT}             (Claude Code shell)"
 echo "──────────────────────────────────────────────────────────────"
-echo "  Open http://127.0.0.1:${STREAMLIT_PORT} in your browser."
+echo "  Open http://127.0.0.1:${API_PORT} in your browser."
 echo "  Toggle 'Show terminal' in the sidebar to embed the shell."
 echo "  Ctrl+C in this terminal stops everything."
 echo "──────────────────────────────────────────────────────────────"
 
-# Start ttyd on the host (so claude has access to host auth, gh, etc.).
-# -W = writable. Default startup command: bash in the project dir, then
-# auto-launch claude if it's on PATH (with -p "read SKILL.md ...").
+# Build the image (includes the React bundle baked in via the Node stage).
+make docker-build >/dev/null
+
+# 1. FastAPI in Docker (serves both /api/* and the React bundle at /).
+docker run --rm \
+    --read-only --tmpfs /tmp --tmpfs /home/radar/.streamlit \
+    --security-opt no-new-privileges --cap-drop ALL \
+    -v "${REPO_DIR}/data:/app/data" \
+    -p 127.0.0.1:${API_PORT}:${API_PORT} \
+    quant-radar:dev \
+    uvicorn quant_radar.server.main:app --host 0.0.0.0 --port ${API_PORT} &
+API_PID=$!
+
+# 2. ttyd on host (so Claude Code inherits host auth / gh / git).
 if command -v claude >/dev/null 2>&1; then
     CMD=(bash -c "cd '$REPO_DIR' && claude")
 else
     CMD=(bash -c "cd '$REPO_DIR' && exec bash")
 fi
-
 ttyd -p "$TTYD_PORT" -i 127.0.0.1 -W "${CMD[@]}" &
 TTYD_PID=$!
 
-# Give ttyd a moment to bind before opening the browser-facing UI.
-sleep 1
-
-# Block on docker-ui; trap cleans up ttyd when this exits.
-make docker-ui
+wait "$API_PID"

@@ -165,11 +165,12 @@ Card types: `chart`, `news`, `sentiment`, `analysis`, `combo`. Card specs are ti
 
 **Lifecycle.** Working tab is shown if `working.json` exists (open session). `new_working_dashboard` opens it (empty list); `close_working_dashboard` removes the file. The viewer auto-refreshes both states.
 
-Viewer (Phase 4):
-- Run with **`make app`** (preferred) — launches the Streamlit viewer **plus** an embedded Claude Code terminal at the bottom of the page via ttyd. Toggle "Show terminal" in the sidebar.
-- Or `make docker-ui` (viewer only, no embedded terminal).
-- Open `http://127.0.0.1:8501` in your browser.
-- Read-only Streamlit app. It does **not** create or modify cards — it reads `data/cards/main.db` and `data/cards/working.json` and renders.
+Viewer (Phase 14 — React + FastAPI):
+- Run with **`make app`** — launches FastAPI (serves API + built React bundle) and ttyd (host shell). Open `http://127.0.0.1:8000`.
+- For dev with HMR: `make dev` runs FastAPI + ttyd + Vite. Open `http://127.0.0.1:5173`.
+- The viewer is a React SPA polling `/api/cards/{main,working}`. It does **not** create or modify cards — the agent does that by calling the Python tools (which update `data/cards/main.db` and `data/cards/working.json` directly).
+- Toggle "Show terminal" in the sidebar for the embedded Claude Code panel. Drag its top edge to resize.
+- Cards are drag-to-move and drag-to-resize in the grid; click ⛶ to enlarge to a full-screen modal with Plotly draw tools.
 - Tabs: **Main** is always shown; **Working** appears only when the working dashboard has cards.
 - Density slider (1–4 columns), auto-refresh slider (2–30 s).
 - Click ⛶ on a card to enlarge — the enlarged view enables Plotly's draw tools (line, openpath, rect, erase). To persist a shape, ask the agent to call `add_annotation` with the coordinates.

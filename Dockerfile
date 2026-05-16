@@ -1,3 +1,21 @@
+# ============================================================
+# Stage 1 — build the React UI bundle.
+# ============================================================
+FROM node:22-slim AS ui-build
+
+WORKDIR /ui
+
+# Install deps with a stable lockfile first for cache efficiency.
+COPY quant_radar-ui/package.json quant_radar-ui/package-lock.json ./
+RUN npm ci --silent
+
+# Source + build.
+COPY quant_radar-ui/ ./
+RUN npm run build
+
+# ============================================================
+# Stage 2 — Python runtime with the built UI baked in.
+# ============================================================
 FROM python:3.13-slim AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -21,6 +39,9 @@ ENV PATH="/home/radar/.local/bin:${PATH}"
 
 COPY --chown=radar:radar pyproject.toml README.md SKILL.md ./
 COPY --chown=radar:radar quant_radar/ ./quant_radar/
+
+# Bake the React bundle so FastAPI can serve it at "/" via StaticFiles.
+COPY --from=ui-build --chown=radar:radar /ui/dist ./quant_radar/server/ui_dist
 
 RUN pip install --user -e ".[dev]"
 
