@@ -166,7 +166,9 @@ Card types: `chart`, `news`, `sentiment`, `analysis`, `combo`. Card specs are ti
 **Lifecycle.** Working tab is shown if `working.json` exists (open session). `new_working_dashboard` opens it (empty list); `close_working_dashboard` removes the file. The viewer auto-refreshes both states.
 
 Viewer (Phase 4):
-- Run with `make docker-ui` → opens at `http://localhost:8501`.
+- Run with **`make app`** (preferred) — launches the Streamlit viewer **plus** an embedded Claude Code terminal at the bottom of the page via ttyd. Toggle "Show terminal" in the sidebar.
+- Or `make docker-ui` (viewer only, no embedded terminal).
+- Open `http://127.0.0.1:8501` in your browser.
 - Read-only Streamlit app. It does **not** create or modify cards — it reads `data/cards/main.db` and `data/cards/working.json` and renders.
 - Tabs: **Main** is always shown; **Working** appears only when the working dashboard has cards.
 - Density slider (1–4 columns), auto-refresh slider (2–30 s).

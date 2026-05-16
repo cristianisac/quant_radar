@@ -28,7 +28,7 @@ def _page_config() -> None:
     )
 
 
-def _sidebar() -> tuple[int, int]:
+def _sidebar() -> tuple[int, int, bool, int]:
     st.sidebar.title("quant_radar")
     st.sidebar.caption("Read-only viewer. Cards come from your chat session.")
     density = st.sidebar.slider(
@@ -38,9 +38,48 @@ def _sidebar() -> tuple[int, int]:
     refresh_sec = st.sidebar.slider(
         "Auto-refresh (seconds)", min_value=2, max_value=30, value=5,
     )
+
+    st.sidebar.divider()
+    st.sidebar.subheader("Terminal")
+    show_terminal = st.sidebar.toggle(
+        "Show terminal",
+        value=False,
+        help=(
+            "Embed a Claude Code shell at the bottom of the page. "
+            "Requires `make app` (not `make docker-ui`) — that launcher "
+            "spawns ttyd on 127.0.0.1:7681."
+        ),
+    )
+    terminal_height = st.sidebar.slider(
+        "Terminal height (px)",
+        min_value=240, max_value=900, value=420, step=20,
+        disabled=not show_terminal,
+    )
+
     if st.sidebar.button("Reload now"):
         st.rerun()
-    return density, refresh_sec
+    return density, refresh_sec, show_terminal, terminal_height
+
+
+TTYD_URL = "http://localhost:7681"
+
+
+def _render_terminal_panel(height: int) -> None:
+    """Embed the host's ttyd-backed Claude Code shell as a bottom panel."""
+    import streamlit.components.v1 as components
+
+    st.divider()
+    cols = st.columns([6, 1])
+    cols[0].markdown("**Claude Code terminal**")
+    cols[1].markdown(
+        f"<a href='{TTYD_URL}' target='_blank' style='float:right'>open in new tab ↗</a>",
+        unsafe_allow_html=True,
+    )
+    components.iframe(TTYD_URL, height=height, scrolling=True)
+    st.caption(
+        "Loopback-only via ttyd on 127.0.0.1:7681. If the panel is blank, "
+        "ttyd may not be running — start with `make app`."
+    )
 
 
 def _hydrate_card_frames(card: Card) -> list[pd.DataFrame]:
@@ -135,7 +174,7 @@ def _render_dashboard(cards: list[Card], target: Target, density: int) -> None:
 
 def main() -> None:
     _page_config()
-    density, refresh_sec = _sidebar()
+    density, refresh_sec, show_terminal, terminal_height = _sidebar()
     st_autorefresh(interval=refresh_sec * 1000, key="dashboard-refresh")
 
     main_cards = store.list_cards("main")
@@ -152,6 +191,9 @@ def main() -> None:
     if working_open:
         with tabs[1]:
             _render_dashboard(working_cards, "working", density)
+
+    if show_terminal:
+        _render_terminal_panel(terminal_height)
 
 
 if __name__ == "__main__":

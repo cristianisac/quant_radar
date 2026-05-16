@@ -15,7 +15,7 @@ export PATH := $(DOCKER_BIN):$(PATH)
 
 .PHONY: install-ide \
         docker-build docker-check docker-lint docker-type docker-test \
-        docker-shell docker-ui
+        docker-shell docker-ui app
 
 # All execution of project code happens in Docker. The venv exists only
 # for IDE language servers (autocomplete, jump-to-def) — never to run
@@ -65,3 +65,9 @@ docker-ui: docker-build
 		quant-radar:dev streamlit run quant_radar/ui/app.py \
 		--server.address 0.0.0.0 \
 		--browser.gatherUsageStats=false
+
+# Full app — dashboard viewer + embedded Claude Code terminal in one
+# browser tab. Requires `ttyd` on host (brew install ttyd) and `claude`
+# on PATH. Ctrl+C in this terminal stops both processes.
+app:
+	@bash scripts/start_app.sh
