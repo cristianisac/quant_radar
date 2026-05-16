@@ -205,7 +205,38 @@ The summarize/score tools deliberately don't call any external LLM API; you are 
 
 ## Running code (mandatory: Docker only)
 
-**Every command that executes project code runs inside the Docker sandbox.** This includes pytest, ruff, pyright, ad-hoc Python REPLs, agent tool calls, the Streamlit UI, and any source-adapter call. The local `.venv` exists only for IDE language servers (autocomplete, jump-to-def) — it is never used to run the code itself.
+**Every command that executes project code runs inside the Docker sandbox.** This includes pytest, ruff, pyright, ad-hoc Python REPLs, agent tool calls, and any source-adapter call. The local `.venv` exists only for IDE language servers (autocomplete, jump-to-def) — it is never used to run the code itself.
+
+### How the agent invokes the tools
+
+When you're acting as the chat agent (inside `make app`'s terminal panel, in a `claude` session, etc.), you have **two valid paths** to invoke the tools — use one of them. **Never** try `python -c` on the host: `quant_radar` isn't installed on the host venv (Docker-only policy), and you'll waste retries on `ModuleNotFoundError`.
+
+**Path A — REST API (preferred for quick card creation, the FastAPI server is already running):**
+```bash
+# Create a chart card on the working dashboard
+curl -s -X POST http://127.0.0.1:8000/api/cards \
+    -H 'Content-Type: application/json' \
+    -d '{
+      "type": "chart",
+      "title": "BTC — 5y daily",
+      "data_refs": [{"source":"binance","kind":"ohlcv","name":"BTCUSDT"}],
+      "chart_spec": {"overlays":["sma_50","sma_200"], "subplots":["yoy"]}
+    }'
+```
+See `GET http://127.0.0.1:8000/api/docs` for the full schema.
+
+**Path B — Python REPL in the sandboxed container (for analytics, detection, complex flows):**
+```bash
+make docker-shell
+>>> from quant_radar import tools
+>>> from quant_radar.sources import yfinance_src
+>>> df = yfinance_src.fetch_ohlcv("BTC-USD")
+>>> ma = tools.analyze_moving_averages(df, asset="BTC-USD")
+>>> tools.create_dashboard_card(type="analysis", title="BTC MA state",
+...     analysis_markdown=ma["summary"])
+```
+
+If you find yourself running `python -c ...` directly on the host, stop. Use one of the two paths above.
 
 ### Self-check (binding for every Claude session)
 
