@@ -15,7 +15,7 @@ export PATH := $(DOCKER_BIN):$(PATH)
 .PHONY: install-ide \
         docker-build docker-check docker-lint docker-type docker-test \
         docker-shell docker-api app dev \
-        ui-install ui-build ui-typecheck
+        ui-install ui-build ui-typecheck visual-e2e
 
 install-ide:
 	uv venv
@@ -78,3 +78,11 @@ ui-build:
 
 ui-typecheck:
 	cd quant_radar-ui && npm run typecheck
+
+# Comprehensive visual E2E — boots FastAPI in a clean container, drives
+# a headless Chromium via Playwright, screenshots every card type and
+# UI interaction. Each chart card is checked for non-blank pixel
+# coverage so silent render failures fail loudly. First run downloads
+# Chromium (~200MB, host-only — no Docker bloat).
+visual-e2e:
+	@bash scripts/visual_e2e.sh

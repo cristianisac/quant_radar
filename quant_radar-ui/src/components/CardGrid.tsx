@@ -12,6 +12,32 @@ import { ChartCard } from "./cards/ChartCard";
 import { NewsCard } from "./cards/NewsCard";
 import { SentimentCard } from "./cards/SentimentCard";
 
+// Diagnostic wrapper: catches errors from any card renderer so a
+// single bad card doesn't take down the entire dashboard.
+import { Component, type ReactNode } from "react";
+class CardErrorBoundary extends Component<
+  { children: ReactNode; title: string },
+  { error: Error | null }
+> {
+  state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+  componentDidCatch(error: Error) {
+    console.error(`[CardErrorBoundary] ${this.props.title}:`, error);
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="border border-red-500/40 bg-red-500/10 rounded-lg p-4 text-sm text-red-300">
+          <strong>{this.props.title}</strong>: {String(this.state.error.message)}
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const ResponsiveGrid = WidthProvider(GridLayoutLib);
 
 const EMPTY_MAIN =
@@ -28,19 +54,25 @@ interface Props {
 }
 
 function renderCard(card: Card) {
+  let inner;
   switch (card.type) {
     case "chart":
     case "combo":
-      return <ChartCard card={card} />;
+      inner = <ChartCard card={card} />;
+      break;
     case "news":
-      return <NewsCard card={card} />;
+      inner = <NewsCard card={card} />;
+      break;
     case "sentiment":
-      return <SentimentCard card={card} />;
+      inner = <SentimentCard card={card} />;
+      break;
     case "analysis":
-      return <AnalysisCard card={card} />;
+      inner = <AnalysisCard card={card} />;
+      break;
     default:
-      return <AnalysisCard card={card} />;
+      inner = <AnalysisCard card={card} />;
   }
+  return <CardErrorBoundary title={card.title}>{inner}</CardErrorBoundary>;
 }
 
 // 12-column grid à la Bootstrap. Density is approximate "cards per row";
