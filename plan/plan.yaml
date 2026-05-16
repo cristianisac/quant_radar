@@ -18,6 +18,45 @@ pending:
       reliability, curated coverage). Fall back to gdelt_src when the
       key is absent or finnhub raises. This needs source='auto' routing
       and SKILL.md guidance update.
+  - id: ui_migration_streamlit_to_react
+    title: Migrate UI from Streamlit to FastAPI + Vite/React
+    estimated_effort: ~1 week of focused work, 4 PRs
+    driver: |
+      Streamlit ceiling on: drag-resizable terminal panel, drag-to-move/
+      drag-to-resize cards, smooth chart annotations, infinite-canvas zoom.
+      User-triggered — do not start without explicit go-ahead.
+    untouched:
+      - quant_radar/sources/
+      - quant_radar/analytics/
+      - quant_radar/cache/
+      - quant_radar/cards/spec.py and store.py
+      - quant_radar/tools/
+      - Docker sandbox policy (--read-only, --cap-drop ALL, etc.)
+      - All 146 existing tests
+    adds:
+      - quant_radar/server/ — FastAPI app, ~200 lines, REST wrap of tools
+      - quant_radar-ui/ — Vite + React + TypeScript SPA
+    deletes_at_cutover:
+      - quant_radar/ui/app.py
+      - quant_radar/ui/render.py
+      - quant_radar/ui/data.py
+      - streamlit, plotly, streamlit-autorefresh Python deps
+    stack:
+      frontend: Vite + React + TypeScript + Tailwind + shadcn/ui
+      charts: Plotly.js
+      card_grid: react-grid-layout
+      server_state: TanStack Query (polling)
+      backend: FastAPI + uvicorn
+    phases:
+      - Phase A — FastAPI backend wrapping all tools as REST + Pydantic
+        schemas + tests. Streamlit unaffected.
+      - Phase B — React scaffold + basic card renderers + polling.
+        Streamlit + React coexist.
+      - Phase C — Parity with current Streamlit (all card types, tabs,
+        sidebar, enlarge modal) + real drag-resize bottom terminal +
+        draggable cards in the grid.
+      - Phase D — Cutover. `make app` switches over, Streamlit deleted,
+        deps trimmed, SKILL.md updated.
 
 phases:
   - id: p0
