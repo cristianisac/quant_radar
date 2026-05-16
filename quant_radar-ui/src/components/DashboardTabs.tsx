@@ -1,15 +1,17 @@
 import { useState } from "react";
 
-import { useWorkingState, useCards } from "../api/cards";
+import { useCards, useWorkingState } from "../api/cards";
+import type { Card } from "../lib/types";
 
 import { CardGrid } from "./CardGrid";
 
 interface Props {
   density: number;
   refreshSec: number;
+  onEnlarge: (card: Card) => void;
 }
 
-export function DashboardTabs({ density, refreshSec }: Props) {
+export function DashboardTabs({ density, refreshSec, onEnlarge }: Props) {
   const [active, setActive] = useState<"main" | "working">("main");
   const refreshMs = refreshSec * 1000;
   const { data: workingState } = useWorkingState(refreshMs);
@@ -23,7 +25,6 @@ export function DashboardTabs({ density, refreshSec }: Props) {
     tabs.push({ id: "working", label: `Working (${workingCards.length})` });
   }
 
-  // Keep "working" selectable only when the working tab is visible.
   const safeActive = tabs.some((t) => t.id === active) ? active : "main";
 
   return (
@@ -45,7 +46,12 @@ export function DashboardTabs({ density, refreshSec }: Props) {
         ))}
       </div>
       <div className="flex-1 overflow-auto">
-        <CardGrid target={safeActive} density={density} refreshSec={refreshSec} />
+        <CardGrid
+          target={safeActive}
+          density={density}
+          refreshSec={refreshSec}
+          onEnlarge={onEnlarge}
+        />
       </div>
     </div>
   );
