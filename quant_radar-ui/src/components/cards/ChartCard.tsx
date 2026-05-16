@@ -1,13 +1,12 @@
 import Plotly from "plotly.js-dist-min";
-import { useEffect, useMemo, useRef, useState } from "react";
-import createPlotlyComponent from "react-plotly.js/factory";
+import { useEffect, useMemo, useRef } from "react";
 
 import { useDataRef } from "../../api/data";
 import { atr, ema, rsi, sma, yoyPercent } from "../../lib/indicators";
 import type { Annotation, Card, TimeSeriesResponse } from "../../lib/types";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const Plot = createPlotlyComponent(Plotly) as any;
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const Plotly_ = Plotly as any;
 
 const OVERLAY_FN: Record<string, (close: number[]) => (number | null)[]> = {
   sma_50: (c) => sma(c, 50),
@@ -32,30 +31,43 @@ interface Props {
 export function ChartCard({ card, height: forcedHeight, enlarged = false }: Props) {
   const ref = card.data_refs[0] ?? null;
   const { data, isLoading, error } = useDataRef(ref);
-  // Drop useResizeHandler in favor of an explicit ResizeObserver. Plotly's
-  // internal resize watcher loses races inside react-grid-layout's
-  // absolute-positioned cells; reading the bounding rect ourselves is
-  // more reliable.
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [measured, setMeasured] = useState({ width: 0, height: 0 });
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const obs = new ResizeObserver(([entry]) => {
-      const r = entry.contentRect;
-      if (r.width > 0 && r.height > 0) {
-        setMeasured({ width: r.width, height: r.height });
-      }
-    });
-    obs.observe(containerRef.current);
-    return () => obs.disconnect();
-  }, []);
-  const width = measured.width || 600;
-  const height = forcedHeight ?? (measured.height || 320);
+  const elRef = useRef<HTMLDivElement>(null);
 
-  const figure = useMemo(
-    () => buildFigure(data ?? null, card, width, height),
-    [data, card, width, height],
-  );
+  const figure = useMemo(() => buildFigure(data ?? null, card), [data, card]);
+
+  // Call Plotly directly. react-plotly.js's auto-init failed silently
+  // inside react-grid-layout cells; controlling the lifecycle here
+  // makes failures loud. ResizeObserver triggers Plot.resize when the
+  // grid cell changes size.
+  useEffect(() => {
+    const el = elRef.current;
+    if (!el || !figure) return;
+    Plotly_
+      .newPlot(el, figure.traces, figure.layout, {
+        displayModeBar: enlarged,
+        modeBarButtonsToAdd: enlarged
+          ? ["drawline", "drawopenpath", "drawrect", "eraseshape"]
+          : [],
+        scrollZoom: enlarged,
+        responsive: true,
+        displaylogo: false,
+      })
+      .catch((e: unknown) =>
+        console.error("[ChartCard] Plotly.newPlot failed:", e),
+      );
+    const obs = new ResizeObserver(() => {
+      Plotly_.Plots.resize(el);
+    });
+    obs.observe(el);
+    return () => {
+      obs.disconnect();
+      Plotly_.purge(el);
+    };
+  }, [figure, enlarged]);
+
+  const wrapperStyle = forcedHeight
+    ? { height: forcedHeight }
+    : { height: "100%", minHeight: 240 };
 
   return (
     <div className="border border-border rounded-lg bg-panel p-3 h-full overflow-hidden flex flex-col">
@@ -63,32 +75,14 @@ export function ChartCard({ card, height: forcedHeight, enlarged = false }: Prop
         <h3 className="font-semibold">{card.title}</h3>
         <span className="text-xs text-muted">{ref?.name ?? "(no data)"}</span>
       </div>
-      <div
-        ref={containerRef}
-        className="flex-1 min-h-[200px] relative"
-      >
-        {isLoading && (
-          <div className="text-xs text-muted">Loading data…</div>
-        )}
+      <div className="flex-1 min-h-0 relative" style={wrapperStyle}>
+        {isLoading && <div className="text-xs text-muted">Loading data…</div>}
         {error && (
           <div className="text-xs text-red-400">
             {String((error as Error).message)}
           </div>
         )}
-        {data && figure && (
-          <Plot
-            data={figure.traces}
-            layout={figure.layout}
-            config={{
-              displayModeBar: enlarged,
-              modeBarButtonsToAdd: enlarged
-                ? ["drawline", "drawopenpath", "drawrect", "eraseshape"]
-                : [],
-              scrollZoom: enlarged,
-              responsive: false,
-            }}
-          />
-        )}
+        <div ref={elRef} style={{ width: "100%", height: "100%" }} />
       </div>
     </div>
   );
@@ -97,8 +91,6 @@ export function ChartCard({ card, height: forcedHeight, enlarged = false }: Prop
 function buildFigure(
   data: TimeSeriesResponse | null,
   card: Card,
-  width: number,
-  height: number,
 ): { traces: object[]; layout: object } | null {
   if (!data || data.timestamps.length === 0) return null;
   const cols = data.columns;
@@ -152,21 +144,26 @@ function buildFigure(
     else if (sub === "atr") y = atr(cols.high ?? [], cols.low ?? [], close);
     else if (sub === "volume") y = cols.volume ?? [];
     else if (sub === "yoy") y = yoyPercent(close);
-    traces.push({
-      type: sub === "volume" ? "bar" : "scatter",
-      mode: sub === "volume" ? undefined : "lines",
-      x, y,
-      name: sub.toUpperCase(),
-      xaxis: "x", yaxis: yAxis,
-      line: sub === "volume" ? undefined : { width: 1 },
-      marker: sub === "volume" ? { color: "#64748b" } : undefined,
-    });
+    if (sub === "volume") {
+      traces.push({
+        type: "bar", x, y,
+        name: sub.toUpperCase(),
+        xaxis: "x", yaxis: yAxis,
+        marker: { color: "#64748b" },
+      });
+    } else {
+      traces.push({
+        type: "scatter", mode: "lines", x, y,
+        name: sub.toUpperCase(),
+        xaxis: "x", yaxis: yAxis,
+        line: { width: 1 },
+      });
+    }
     subplotRow += 1;
   }
 
   const layout: Record<string, unknown> = {
-    width, height,
-    autosize: false,
+    autosize: true,
     paper_bgcolor: "rgba(0,0,0,0)",
     plot_bgcolor: "rgba(0,0,0,0)",
     font: { color: "#fafafa", size: 11 },
@@ -174,6 +171,9 @@ function buildFigure(
     showlegend: false,
     xaxis: {
       gridcolor: "#262730",
+      // Candlestick traces auto-enable rangeslider; force off when
+      // we have subplots since the slider doesn't play nicely with
+      // multi-axis layouts.
       rangeslider: { visible: false },
       anchor: nRows > 1 ? `y${nRows}` : "y",
     },
@@ -189,7 +189,6 @@ function buildFigure(
       layout[`yaxis${i + 2}`] = {
         domain: [Math.max(0, bottom), top],
         gridcolor: "#262730",
-        title: { text: subplots[i].toUpperCase(), font: { size: 10 } },
       };
     }
   }
