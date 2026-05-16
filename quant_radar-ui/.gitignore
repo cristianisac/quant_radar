@@ -3,3 +3,11 @@ dist/
 .vite/
 *.local
 .env*.local
+# tsc -b artifacts (we use noEmit: true now; this guards against drift)
+*.tsbuildinfo
+src/**/*.js
+src/**/*.js.map
+*.js
+!vite.config.js
+!postcss.config.js
+!tailwind.config.js

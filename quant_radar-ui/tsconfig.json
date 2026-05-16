@@ -16,7 +16,8 @@
     "allowImportingTsExtensions": false,
     "forceConsistentCasingInFileNames": true,
     "useDefineForClassFields": true,
-    "verbatimModuleSyntax": false
+    "verbatimModuleSyntax": false,
+    "noEmit": true
   },
   "include": ["src", "vite.config.ts"]
 }
