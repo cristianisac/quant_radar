@@ -7,6 +7,17 @@ Status legend: ☐ todo · ◐ in progress · ☑ done · ✕ skipped
 ## Pending (backlog, not yet scheduled)
 - ☐ **Finnhub env passthrough** — forward `FINNHUB_API_KEY` from the host through `make docker-shell` / `make docker-ui` (2-line Makefile change).
 - ☐ **News routing: Finnhub primary, GDELT fallback** — when `FINNHUB_API_KEY` is set, prefer `finnhub_src` for reliability; fall back to `gdelt_src` on missing key or failure. Update SKILL.md guidance.
+- ☐ **UI migration: Streamlit → FastAPI + Vite/React** (estimated ~1 week, 4 PRs). User-triggered when ready. Driver: Streamlit ceiling on draggable terminal panel, drag-resizable cards, smooth chart annotations, infinite-canvas zoom.
+  - **Backend untouched.** All Python tools / sources / analytics / cache / card store / Docker policy stay exactly as-is.
+  - **Adds:** `quant_radar/server/` (FastAPI, ~200 lines wrapping the existing tools as REST), `quant_radar-ui/` (Vite + React + TS + Tailwind + shadcn/ui).
+  - **Deletes (final cutover only):** `quant_radar/ui/app.py` / `render.py` / `data.py` and the streamlit/plotly/streamlit-autorefresh Python deps.
+  - **Stack:** Vite + React + TypeScript, Tailwind + shadcn/ui, Plotly.js, react-grid-layout (draggable cards), TanStack Query (polling), FastAPI + uvicorn.
+  - **Phases:**
+    1. FastAPI backend + Pydantic schemas + tests (Streamlit unaffected)
+    2. React scaffold + basic card rendering (Streamlit + React coexist)
+    3. Parity with current UI + real drag-resize bottom terminal panel
+    4. Cutover: `make app` switches over, Streamlit deleted, deps trimmed
+  - **Docker stays** — FastAPI + built static React files ship inside the same image, same `--read-only --cap-drop ALL` sandbox, same `make docker-check` gate.
 
 ## Phase 12 — Policy tightening + exhaustive E2E + yfinance ancient-start bug ☑
 
