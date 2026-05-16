@@ -235,9 +235,10 @@ The container is read-only, drops all Linux capabilities, has `no-new-privileges
 
 ## Git etiquette (binding for any Claude session)
 
-- Push **only** to the `origin` remote of this repo. Never add or push to any other remote.
+- The canonical remote for `quant_radar` is **GitHub** (`github`). All pushes go there: `git push github <branch>`.
+- `origin` is the legacy GitLab remote — **do not push to it**. It's kept for history only.
 - Push **only** feature branches named `phase-N-<slug>` or `fix-<slug>`. Never push to `main`.
-- The user merges branches into `main` via GitLab MR. Do not attempt to merge locally and push.
+- The user merges branches into `main` via GitHub PR. Do not attempt to merge locally and push.
 - Never operate outside `/Users/cristianisac/Documents/claude_agents/quant_radar/`.
 - Never commit anything under `data/cache/`, `data/cards/main.db`, or `data/cards/working.json` (already in `.gitignore`).
 
