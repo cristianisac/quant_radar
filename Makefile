@@ -5,7 +5,13 @@
 #   make docker-<target>    — runs in the sandboxed container (use for any
 #                             command that touches a real external API)
 
-DOCKER ?= /Applications/Docker.app/Contents/Resources/bin/docker
+# Docker Desktop's binaries live here on macOS. We prepend this to PATH
+# **only when `make` runs** so `docker build` can find its credential
+# helper (`docker-credential-desktop`). This does NOT leak into the
+# user's shell — it's scoped to make's sub-processes only.
+DOCKER_BIN := /Applications/Docker.app/Contents/Resources/bin
+DOCKER ?= $(DOCKER_BIN)/docker
+export PATH := $(DOCKER_BIN):$(PATH)
 
 .PHONY: install-ide \
         docker-build docker-check docker-lint docker-type docker-test \
