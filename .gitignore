@@ -1,3 +1,8 @@
+# React UI build artifacts
+quant_radar-ui/node_modules/
+quant_radar-ui/dist/
+quant_radar-ui/.vite/
+
 # Python
 __pycache__/
 *.pyc

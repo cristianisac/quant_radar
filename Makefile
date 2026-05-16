@@ -15,7 +15,8 @@ export PATH := $(DOCKER_BIN):$(PATH)
 
 .PHONY: install-ide \
         docker-build docker-check docker-lint docker-type docker-test \
-        docker-shell docker-ui app
+        docker-shell docker-ui docker-api app dev \
+        ui-install ui-build ui-typecheck
 
 # All execution of project code happens in Docker. The venv exists only
 # for IDE language servers (autocomplete, jump-to-def) — never to run
@@ -71,3 +72,26 @@ docker-ui: docker-build
 # on PATH. Ctrl+C in this terminal stops both processes.
 app:
 	@bash scripts/start_app.sh
+
+# Phase 14b dev launcher — FastAPI (Docker) + ttyd (host) + Vite (host).
+# Open http://127.0.0.1:5173 once started. Streamlit `make app` still
+# works in parallel until Phase 14d cutover.
+dev:
+	@bash scripts/start_dev.sh
+
+# FastAPI alone, inside Docker. Useful for ad-hoc curl / Postman testing.
+docker-api: docker-build
+	$(DOCKER_RUN_PERSISTENT) \
+		-p 127.0.0.1:8000:8000 \
+		quant-radar:dev \
+		uvicorn quant_radar.server.main:app --host 0.0.0.0 --port 8000
+
+# UI build helpers — run on the host (Node lives on host for HMR speed).
+ui-install:
+	cd quant_radar-ui && npm install
+
+ui-build:
+	cd quant_radar-ui && npm run build
+
+ui-typecheck:
+	cd quant_radar-ui && npm run typecheck
