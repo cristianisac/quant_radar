@@ -66,8 +66,6 @@ TTYD_URL = "http://localhost:7681"
 
 def _render_terminal_panel(height: int) -> None:
     """Embed the host's ttyd-backed Claude Code shell as a bottom panel."""
-    import streamlit.components.v1 as components
-
     st.divider()
     cols = st.columns([6, 1])
     cols[0].markdown("**Claude Code terminal**")
@@ -75,10 +73,11 @@ def _render_terminal_panel(height: int) -> None:
         f"<a href='{TTYD_URL}' target='_blank' style='float:right'>open in new tab ↗</a>",
         unsafe_allow_html=True,
     )
-    components.iframe(TTYD_URL, height=height, scrolling=True)
+    st.iframe(TTYD_URL, height=height)
     st.caption(
-        "Loopback-only via ttyd on 127.0.0.1:7681. If the panel is blank, "
-        "ttyd may not be running — start with `make app`."
+        "Loopback-only via ttyd on 127.0.0.1:7681. **Blank panel?** "
+        "You probably started with `make docker-ui` — that's viewer-only. "
+        "Use `make app` instead to launch ttyd alongside Streamlit."
     )
 
 
