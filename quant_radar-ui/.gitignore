@@ -11,3 +11,8 @@ src/**/*.js.map
 !vite.config.js
 !postcss.config.js
 !tailwind.config.js
+
+# Playwright run artifacts (caches, last-run pointer, trace files)
+test-results/
+playwright-report/
+playwright/.cache/
