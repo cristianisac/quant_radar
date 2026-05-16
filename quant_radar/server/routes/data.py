@@ -16,7 +16,7 @@ from fastapi import APIRouter, HTTPException
 
 from quant_radar.cards.spec import DataRef
 from quant_radar.server.schemas import TimeSeriesResponse
-from quant_radar.ui.data import hydrate
+from quant_radar.sources.hydrate import hydrate
 
 router = APIRouter()
 

@@ -1,9 +1,8 @@
 # quant_radar — local dev shortcuts.
 #
-# Two modes:
-#   make <target>           — runs in the local .venv (fast iteration)
-#   make docker-<target>    — runs in the sandboxed container (use for any
-#                             command that touches a real external API)
+# All execution of project code happens in Docker. The local .venv (if
+# present via `make install-ide`) exists only for IDE language servers
+# — never to run the code itself.
 
 # Docker Desktop's binaries live here on macOS. We prepend this to PATH
 # **only when `make` runs** so `docker build` can find its credential
@@ -15,28 +14,21 @@ export PATH := $(DOCKER_BIN):$(PATH)
 
 .PHONY: install-ide \
         docker-build docker-check docker-lint docker-type docker-test \
-        docker-shell docker-ui docker-api app dev \
+        docker-shell docker-api app dev \
         ui-install ui-build ui-typecheck
-
-# All execution of project code happens in Docker. The venv exists only
-# for IDE language servers (autocomplete, jump-to-def) — never to run
-# the code itself.
 
 install-ide:
 	uv venv
 	uv pip install -e ".[dev]"
 
-# Hardening flags applied to every container we run.
+# Hardening flags applied to every ephemeral container run.
 HARDEN = --read-only --tmpfs /tmp --tmpfs /app/data \
 		--security-opt no-new-privileges --cap-drop ALL
 
-# Lint/type/test never need the host cache — tests create tmp data via
-# pytest fixtures; lint and type are static. A tmpfs at /app/data keeps
-# any accidental writes ephemeral.
+# Lint/type/test never need the host cache.
 DOCKER_RUN_EPHEMERAL = $(DOCKER) run --rm $(HARDEN) quant-radar:dev
 
-# Interactive sessions (shell, ui) bind-mount ./data so cached parquet
-# survives between runs. Requires Docker Desktop file-sharing for ~/.
+# Interactive sessions bind-mount ./data so cached parquet survives.
 DOCKER_RUN_PERSISTENT = $(DOCKER) run --rm -it \
 		--read-only --tmpfs /tmp \
 		--security-opt no-new-privileges --cap-drop ALL \
@@ -59,34 +51,25 @@ docker-check: docker-lint docker-type docker-test
 docker-shell: docker-build
 	$(DOCKER_RUN_PERSISTENT) quant-radar:dev python
 
-docker-ui: docker-build
-	$(DOCKER_RUN_PERSISTENT) \
-		--tmpfs /home/radar/.streamlit \
-		-p 127.0.0.1:8501:8501 \
-		quant-radar:dev streamlit run quant_radar/ui/app.py \
-		--server.address 0.0.0.0 \
-		--browser.gatherUsageStats=false
-
-# Full app — dashboard viewer + embedded Claude Code terminal in one
-# browser tab. Requires `ttyd` on host (brew install ttyd) and `claude`
-# on PATH. Ctrl+C in this terminal stops both processes.
-app:
-	@bash scripts/start_app.sh
-
-# Phase 14b dev launcher — FastAPI (Docker) + ttyd (host) + Vite (host).
-# Open http://127.0.0.1:5173 once started. Streamlit `make app` still
-# works in parallel until Phase 14d cutover.
-dev:
-	@bash scripts/start_dev.sh
-
-# FastAPI alone, inside Docker. Useful for ad-hoc curl / Postman testing.
+# FastAPI alone (no ttyd). Useful for curl / Postman testing.
 docker-api: docker-build
 	$(DOCKER_RUN_PERSISTENT) \
 		-p 127.0.0.1:8000:8000 \
 		quant-radar:dev \
 		uvicorn quant_radar.server.main:app --host 0.0.0.0 --port 8000
 
-# UI build helpers — run on the host (Node lives on host for HMR speed).
+# Full app — FastAPI (serves API + React bundle) + ttyd (host) for the
+# embedded Claude Code terminal. Open http://127.0.0.1:8000.
+# Requires `ttyd` on host (brew install ttyd) and `claude` on PATH.
+app:
+	@bash scripts/start_app.sh
+
+# Dev launcher with HMR — FastAPI (Docker) + ttyd (host) + Vite (host).
+# Open http://127.0.0.1:5173 once started.
+dev:
+	@bash scripts/start_dev.sh
+
+# UI build helpers — Node on host for HMR speed.
 ui-install:
 	cd quant_radar-ui && npm install
 

@@ -515,7 +515,7 @@ step("I. MULTI-SOURCE COMPARISON — US 10y vs BTC on one card (Phase 4 hydrate)
 
 try:
     from quant_radar.cards.spec import DataRef
-    from quant_radar.ui.data import hydrate
+    from quant_radar.sources.hydrate import hydrate
 
     dgs10_df = hydrate(DataRef(source="fred", kind="macro", name="DGS10"))
     btc_df = hydrate(DataRef(source="binance", kind="ohlcv", name="BTCUSDT"))
