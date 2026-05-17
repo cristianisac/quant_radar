@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef } from "react";
 
 import { useDataRef } from "../../api/data";
 import { atr, ema, rsi, sma, yoyPercent } from "../../lib/indicators";
+import { labelFor, subplotLabel } from "../../lib/labels";
 import type { Annotation, Card, TimeSeriesResponse } from "../../lib/types";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -54,6 +55,14 @@ export function ChartCard({ card, height: forcedHeight, enlarged = false }: Prop
         modeBarButtonsToAdd: enlarged
           ? ["drawline", "drawopenpath", "drawrect", "eraseshape"]
           : [],
+        // Trim verbose default buttons so the vertical modebar stays short.
+        modeBarButtonsToRemove: [
+          "lasso2d",
+          "select2d",
+          "toggleSpikelines",
+          "hoverClosestCartesian",
+          "hoverCompareCartesian",
+        ],
         scrollZoom: enlarged,
         responsive: true,
         displaylogo: false,
@@ -75,7 +84,9 @@ export function ChartCard({ card, height: forcedHeight, enlarged = false }: Prop
     ? { height: forcedHeight }
     : { height: "100%", minHeight: 240 };
 
-  const badge = [ref0?.name, ref1?.name].filter(Boolean).join(" + ") || "(no data)";
+  // Keep the corner badge short — the legend below already spells out
+  // the friendly long-form for each series.
+  const badge = [ref0?.name, ref1?.name].filter(Boolean).join(" · ") || "(no data)";
 
   return (
     <div className="border border-border rounded-lg bg-panel p-3 h-full overflow-hidden flex flex-col">
@@ -83,7 +94,10 @@ export function ChartCard({ card, height: forcedHeight, enlarged = false }: Prop
         <h3 className="font-semibold">{card.title}</h3>
         <span className="text-xs text-muted">{badge}</span>
       </div>
-      <div className="flex-1 min-h-0 relative" style={wrapperStyle}>
+      <div
+        className="qr-chart-host flex-1 min-h-0 relative"
+        style={wrapperStyle}
+      >
         {isLoading && <div className="text-xs text-muted">Loading data…</div>}
         {error && (
           <div className="text-xs text-red-400">
@@ -114,19 +128,22 @@ function buildFigure(
   const nRows = 1 + subplots.length;
   const traces: object[] = [];
 
+  const primaryName = labelFor(data.name);
   if (isOhlcv) {
     traces.push({
       type: "candlestick", x,
       open: cols.open, high: cols.high, low: cols.low, close: cols.close,
       increasing: { line: { color: "#22c55e" } },
       decreasing: { line: { color: "#ef4444" } },
-      name: data.name, xaxis: "x", yaxis: "y",
+      name: primaryName, xaxis: "x", yaxis: "y",
+      showlegend: true,
     });
   } else {
     traces.push({
       type: "scatter", mode: "lines", x, y: close,
       line: { color: "#22c55e", width: 1.5 },
-      name: data.name, xaxis: "x", yaxis: "y",
+      name: primaryName, xaxis: "x", yaxis: "y",
+      showlegend: true,
     });
   }
 
@@ -142,9 +159,10 @@ function buildFigure(
       type: "scatter", mode: "lines",
       x: second.timestamps, y: close2,
       line: { color: "#fbbf24", width: 1.5 },
-      name: second.name,
+      name: labelFor(second.name),
       xaxis: "x",
       yaxis: `y${secondAxisIndex}`,
+      showlegend: true,
     });
   }
 
@@ -171,31 +189,47 @@ function buildFigure(
     else if (sub === "atr") y = atr(cols.high ?? [], cols.low ?? [], close);
     else if (sub === "volume") y = cols.volume ?? [];
     else if (sub === "yoy") y = yoyPercent(close);
+    const label = subplotLabel(sub);
     if (sub === "volume") {
       traces.push({
         type: "bar", x, y,
-        name: sub.toUpperCase(),
+        name: label,
         xaxis: "x", yaxis: yAxis,
         marker: { color: "#64748b" },
+        showlegend: false,
       });
     } else {
       traces.push({
         type: "scatter", mode: "lines", x, y,
-        name: sub.toUpperCase(),
+        name: label,
         xaxis: "x", yaxis: yAxis,
         line: { width: 1 },
+        showlegend: false,
       });
     }
     subplotRow += 1;
   }
+
+  // Subplot title overlays — one per extra row. Anchored to the top-left
+  // of each subplot's y-axis domain so the label sits inside the panel
+  // even after window resizes.
+  const subplotAnnotations: object[] = [];
 
   const layout: Record<string, unknown> = {
     autosize: true,
     paper_bgcolor: "rgba(0,0,0,0)",
     plot_bgcolor: "rgba(0,0,0,0)",
     font: { color: "#fafafa", size: 11 },
-    margin: { l: 50, r: 20, t: 10, b: 40 },
-    showlegend: false,
+    // Top margin holds the legend so it doesn't sit on the price panel.
+    margin: { l: 50, r: 20, t: 28, b: 40 },
+    showlegend: true,
+    legend: {
+      orientation: "h",
+      yanchor: "bottom", y: 1.02,
+      xanchor: "left", x: 0,
+      bgcolor: "rgba(0,0,0,0)",
+      font: { size: 10 },
+    },
     xaxis: {
       gridcolor: "#262730",
       // Candlestick traces auto-enable rangeslider; force off when
@@ -205,6 +239,14 @@ function buildFigure(
       anchor: nRows > 1 ? `y${nRows}` : "y",
     },
     shapes,
+    // Modebar lives in the paper margin, away from the data. Compact
+    // vertical so it tucks against the top-right border.
+    modebar: {
+      orientation: "v",
+      bgcolor: "rgba(0,0,0,0)",
+      color: "#71717a",
+      activecolor: "#fbbf24",
+    },
   };
   const priceDomain: [number, number] = nRows === 1 ? [0, 1] : [0.42, 1];
   layout.yaxis = { domain: priceDomain, gridcolor: "#262730" };
@@ -217,8 +259,19 @@ function buildFigure(
         domain: [Math.max(0, bottom), top],
         gridcolor: "#262730",
       };
+      subplotAnnotations.push({
+        text: subplotLabel(subplots[i]),
+        xref: "paper", yref: "paper",
+        x: 0.005, y: top,
+        xanchor: "left", yanchor: "top",
+        showarrow: false,
+        font: { size: 10, color: "#a1a1aa" },
+        bgcolor: "rgba(28,31,38,0.6)",
+        borderpad: 2,
+      });
     }
   }
+  layout.annotations = subplotAnnotations;
   if (hasSecond) {
     // Right-side y-axis overlaying the price panel — different scale,
     // so the second series stays readable when its magnitude differs
