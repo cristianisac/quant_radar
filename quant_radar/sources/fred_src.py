@@ -136,13 +136,24 @@ def search_series(query: str, *, limit: int = 20) -> list[dict]:
         return []
     out: list[dict] = []
     for s in payload.get("seriess", []) or []:
+        # FRED's `notes` field is often a long paragraph; truncate at a
+        # reasonable budget so a 20-hit search doesn't blow up the
+        # agent's context window. Full text is still one fetch away via
+        # /fred/series/{id} if needed.
+        notes = s.get("notes") or ""
+        if len(notes) > 400:
+            notes = notes[:397].rstrip() + "..."
         out.append({
             "id": s.get("id"),
             "title": s.get("title"),
             "frequency": s.get("frequency_short") or s.get("frequency"),
+            "units": s.get("units_short") or s.get("units"),
+            "seasonal_adjustment": s.get("seasonal_adjustment_short")
+                                    or s.get("seasonal_adjustment"),
             "observation_start": s.get("observation_start"),
             "observation_end": s.get("observation_end"),
             "popularity": s.get("popularity"),
+            "notes": notes,
         })
     return out
 
@@ -152,6 +163,40 @@ def search_series(query: str, *, limit: int = 20) -> list[dict]:
 from quant_radar.cards.spec import DataRef as _DataRef  # noqa: E402
 from quant_radar.sources.base_source import Source, register_source  # noqa: E402
 from quant_radar.sources.catalog import CATALOG  # noqa: E402
+
+
+def _describe_series(series_id: str) -> dict | None:
+    """Full /fred/series response for one series_id (cached title path)."""
+    api_key = os.environ.get("FRED_API_KEY")
+    if not api_key:
+        return None
+    try:
+        resp = requests.get(
+            _SERIES_URL,
+            params={"series_id": series_id, "api_key": api_key, "file_type": "json"},
+            timeout=_TIMEOUT,
+        )
+        resp.raise_for_status()
+        s = (resp.json().get("seriess") or [{}])[0]
+    except (requests.RequestException, ValueError):
+        return None
+    if not s.get("id"):
+        return None
+    notes = s.get("notes") or ""
+    if len(notes) > 800:
+        notes = notes[:797].rstrip() + "..."
+    return {
+        "symbol": s.get("id"),
+        "longname": s.get("title"),
+        "frequency": s.get("frequency_short") or s.get("frequency"),
+        "units": s.get("units_short") or s.get("units"),
+        "seasonal_adjustment": s.get("seasonal_adjustment_short")
+                                or s.get("seasonal_adjustment"),
+        "observation_start": s.get("observation_start"),
+        "observation_end": s.get("observation_end"),
+        "popularity": s.get("popularity"),
+        "notes": notes,
+    }
 
 
 class _FredSource(Source):
@@ -164,6 +209,17 @@ class _FredSource(Source):
         return fetch_macro_series(
             ref.name, start=ref.start, end=ref.end, refresh=refresh,
         )
+
+    def search(self, query: str, *, limit: int = 20) -> list[dict]:
+        # Re-shape search_series output to the ABC's canonical contract
+        # (symbol/longname keys), keeping the FRED-specific extras.
+        return [
+            {**hit, "symbol": hit.pop("id", None), "longname": hit.pop("title", None)}
+            for hit in search_series(query, limit=limit)
+        ]
+
+    def describe(self, name: str) -> dict | None:
+        return _describe_series(name)
 
 
 register_source(_FredSource())

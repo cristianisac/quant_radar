@@ -99,5 +99,12 @@ class _CoinPaprikaSource(Source):
             ref.name, start=ref.start, end=ref.end, refresh=refresh,
         )
 
+    def search(self, query: str, *, limit: int = 20) -> list[dict]:
+        # Deferred (paid-only). The agent should reach for binance_src instead.
+        return []
+
+    def describe(self, name: str) -> dict | None:
+        return None
+
 
 register_source(_CoinPaprikaSource())
