@@ -16,7 +16,7 @@ import pandas as pd
 from quant_radar.cards.spec import DataRef
 
 # Side-effect imports: each module calls register_source() at import time.
-from quant_radar.sources import binance_src, coinpaprika_src, fred_src, yfinance_src  # noqa: F401
+from quant_radar.sources import binance_src, fred_src, yfinance_src  # noqa: F401
 from quant_radar.sources.base_source import get_source
 
 

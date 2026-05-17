@@ -145,7 +145,7 @@ def test_list_sources_includes_known_backends(client):
     r = client.get("/api/sources")
     assert r.status_code == 200
     names = {s["name"] for s in r.json()}
-    assert {"yfinance", "binance", "fred", "gdelt", "finnhub", "coinpaprika"} <= names
+    assert {"yfinance", "binance", "fred", "gdelt", "finnhub"} <= names
 
 
 def test_describe_known_source(client):

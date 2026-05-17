@@ -362,7 +362,7 @@ def check_discovery_per_source() -> None:
         registered = {s["source"] for s in tools.list_searchable_sources()}
         record(
             "every source registers a search+describe surface (ABC contract)",
-            {"fred", "yfinance", "binance", "coinpaprika"}.issubset(registered),
+            {"fred", "yfinance", "binance"}.issubset(registered),
             f"registered: {sorted(registered)}",
         )
     except Exception as e:
