@@ -7,16 +7,14 @@ import { CardGrid } from "./CardGrid";
 
 interface Props {
   density: number;
-  refreshSec: number;
   onEnlarge: (card: Card) => void;
 }
 
-export function DashboardTabs({ density, refreshSec, onEnlarge }: Props) {
+export function DashboardTabs({ density, onEnlarge }: Props) {
   const [active, setActive] = useState<"main" | "working">("main");
-  const refreshMs = refreshSec * 1000;
-  const { data: workingState } = useWorkingState(refreshMs);
-  const { data: mainCards = [] } = useCards("main", refreshMs);
-  const { data: workingCards = [] } = useCards("working", refreshMs);
+  const { data: workingState } = useWorkingState();
+  const { data: mainCards = [] } = useCards("main");
+  const { data: workingCards = [] } = useCards("working");
 
   const tabs: { id: "main" | "working"; label: string }[] = [
     { id: "main", label: `Main (${mainCards.length})` },
@@ -46,12 +44,7 @@ export function DashboardTabs({ density, refreshSec, onEnlarge }: Props) {
         ))}
       </div>
       <div className="flex-1 overflow-auto">
-        <CardGrid
-          target={safeActive}
-          density={density}
-          refreshSec={refreshSec}
-          onEnlarge={onEnlarge}
-        />
+        <CardGrid target={safeActive} density={density} onEnlarge={onEnlarge} />
       </div>
     </div>
   );

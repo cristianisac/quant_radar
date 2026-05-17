@@ -29,11 +29,17 @@ interface Props {
 }
 
 export function ChartCard({ card, height: forcedHeight, enlarged = false }: Props) {
-  const ref = card.data_refs[0] ?? null;
-  const { data, isLoading, error } = useDataRef(ref);
+  const ref0 = card.data_refs[0] ?? null;
+  const ref1 = card.data_refs[1] ?? null;
+  const { data: data0, isLoading: loading0, error } = useDataRef(ref0);
+  const { data: data1, isLoading: loading1 } = useDataRef(ref1);
   const elRef = useRef<HTMLDivElement>(null);
+  const isLoading = loading0 || loading1;
 
-  const figure = useMemo(() => buildFigure(data ?? null, card), [data, card]);
+  const figure = useMemo(
+    () => buildFigure([data0 ?? null, data1 ?? null], card),
+    [data0, data1, card],
+  );
 
   // Call Plotly directly. react-plotly.js's auto-init failed silently
   // inside react-grid-layout cells; controlling the lifecycle here
@@ -69,11 +75,13 @@ export function ChartCard({ card, height: forcedHeight, enlarged = false }: Prop
     ? { height: forcedHeight }
     : { height: "100%", minHeight: 240 };
 
+  const badge = [ref0?.name, ref1?.name].filter(Boolean).join(" + ") || "(no data)";
+
   return (
     <div className="border border-border rounded-lg bg-panel p-3 h-full overflow-hidden flex flex-col">
       <div className="flex justify-between items-baseline mb-2 shrink-0">
         <h3 className="font-semibold">{card.title}</h3>
-        <span className="text-xs text-muted">{ref?.name ?? "(no data)"}</span>
+        <span className="text-xs text-muted">{badge}</span>
       </div>
       <div className="flex-1 min-h-0 relative" style={wrapperStyle}>
         {isLoading && <div className="text-xs text-muted">Loading data…</div>}
@@ -89,9 +97,10 @@ export function ChartCard({ card, height: forcedHeight, enlarged = false }: Prop
 }
 
 function buildFigure(
-  data: TimeSeriesResponse | null,
+  datas: (TimeSeriesResponse | null)[],
   card: Card,
 ): { traces: object[]; layout: object } | null {
+  const data = datas[0];
   if (!data || data.timestamps.length === 0) return null;
   const cols = data.columns;
   const x = data.timestamps;
@@ -118,6 +127,24 @@ function buildFigure(
       type: "scatter", mode: "lines", x, y: close,
       line: { color: "#22c55e", width: 1.5 },
       name: data.name, xaxis: "x", yaxis: "y",
+    });
+  }
+
+  const second = datas[1];
+  const hasSecond = second !== null && second !== undefined && second.timestamps.length > 0;
+  // Secondary y-axis is placed after all subplot axes, so naming doesn't
+  // collide. nRows already accounts for the main row + subplots.
+  const secondAxisIndex = nRows + 1;
+  if (hasSecond) {
+    const cols2 = second.columns;
+    const close2 = cols2.close ?? cols2.value ?? [];
+    traces.push({
+      type: "scatter", mode: "lines",
+      x: second.timestamps, y: close2,
+      line: { color: "#fbbf24", width: 1.5 },
+      name: second.name,
+      xaxis: "x",
+      yaxis: `y${secondAxisIndex}`,
     });
   }
 
@@ -191,6 +218,19 @@ function buildFigure(
         gridcolor: "#262730",
       };
     }
+  }
+  if (hasSecond) {
+    // Right-side y-axis overlaying the price panel — different scale,
+    // so the second series stays readable when its magnitude differs
+    // wildly from the first (e.g. treasury yield vs crypto price).
+    layout[`yaxis${secondAxisIndex}`] = {
+      overlaying: "y",
+      side: "right",
+      domain: priceDomain,
+      gridcolor: "transparent",
+      tickfont: { color: "#fbbf24" },
+    };
+    layout.margin = { l: 50, r: 50, t: 10, b: 40 };
   }
   return { traces, layout };
 }
