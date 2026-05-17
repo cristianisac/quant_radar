@@ -111,23 +111,6 @@ CATALOG: dict[str, SourceCapability] = {
         examples=["DGS10", "CPIAUCSL", "UNRATE", "GDP", "FEDFUNDS", "DEXUSEU", "M2SL"],
         schema={"macro": ["value"]},
     ),
-    "coinpaprika": SourceCapability(
-        name="coinpaprika",
-        kinds=["ohlcv"],
-        intervals=["1d"],
-        history="—",
-        coverage="—",
-        auth="paid plan required",
-        rate_limit="—",
-        status="deferred",
-        notes=(
-            "CoinPaprika moved historical OHLCV behind a paid plan in 2025 "
-            "(returns 402 Payment Required on the free tier). Use "
-            "binance_src for crypto OHLCV. Code kept for callers with a "
-            "paid plan."
-        ),
-        schema={"ohlcv": ["open", "high", "low", "close", "volume"]},
-    ),
     "gdelt": SourceCapability(
         name="gdelt",
         kinds=["news"],

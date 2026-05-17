@@ -58,10 +58,6 @@ def test_every_catalog_entry_has_required_fields():
         assert d["status"] in ("active", "limited", "deferred", "paid-only")
 
 
-def test_coinpaprika_is_marked_deferred():
-    assert catalog.CATALOG["coinpaprika"].status == "deferred"
-
-
 # --------------- list / describe ---------------
 
 
