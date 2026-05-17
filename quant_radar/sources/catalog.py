@@ -35,6 +35,12 @@ class SourceCapability:
     # "paid-only" — requires a paid plan; key must be supplied externally
     notes: str = ""
     examples: list[str] = field(default_factory=list)
+    # Output schema per ``kind``. The DataFrame returned for
+    # ``(source, kind)`` is guaranteed to expose these columns. News and
+    # event sources use ``record`` to signal a non-tabular payload.
+    # Other code (tool compatibility, agent guidance) reads this rather
+    # than re-deriving from convention.
+    schema: dict[str, list[str]] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -61,6 +67,7 @@ CATALOG: dict[str, SourceCapability] = {
         auth="none",
         rate_limit="aggressive — cache-first; only use refresh=True deliberately",
         examples=["AAPL", "SPY", "MSFT", "TSLA", "NVDA", "BTC-USD", "EURUSD=X", "^GSPC"],
+        schema={"ohlcv": ["open", "high", "low", "close", "volume"]},
     ),
     "binance": SourceCapability(
         name="binance",
@@ -81,6 +88,7 @@ CATALOG: dict[str, SourceCapability] = {
         auth="none",
         rate_limit="1200 request-weight/min per IP — practically unlimited for cached use",
         examples=["BTC", "ETH", "SOL", "BNB", "XRP", "BTCUSDT", "ETHBTC", "SOLUSDC"],
+        schema={"ohlcv": ["open", "high", "low", "close", "volume"]},
     ),
     "fred": SourceCapability(
         name="fred",
@@ -101,6 +109,7 @@ CATALOG: dict[str, SourceCapability] = {
         auth="none",
         rate_limit="lenient",
         examples=["DGS10", "CPIAUCSL", "UNRATE", "GDP", "FEDFUNDS", "DEXUSEU", "M2SL"],
+        schema={"macro": ["value"]},
     ),
     "coinpaprika": SourceCapability(
         name="coinpaprika",
@@ -117,6 +126,7 @@ CATALOG: dict[str, SourceCapability] = {
             "binance_src for crypto OHLCV. Code kept for callers with a "
             "paid plan."
         ),
+        schema={"ohlcv": ["open", "high", "low", "close", "volume"]},
     ),
     "gdelt": SourceCapability(
         name="gdelt",
@@ -143,6 +153,7 @@ CATALOG: dict[str, SourceCapability] = {
             "For reliable news use finnhub (requires free key)."
         ),
         examples=['Bitcoin', '"AI stocks"', 'Fed AND rates', 'Nvidia earnings'],
+        schema={"news": ["title", "url", "source", "published_at"]},
     ),
     "finnhub": SourceCapability(
         name="finnhub",
@@ -156,6 +167,7 @@ CATALOG: dict[str, SourceCapability] = {
         auth="FINNHUB_API_KEY env var (free signup at finnhub.io)",
         rate_limit="60 calls/min on the free tier",
         examples=["AAPL", "MSFT", "TSLA"],
+        schema={"news": ["title", "url", "source", "published_at", "summary"]},
     ),
 }
 
