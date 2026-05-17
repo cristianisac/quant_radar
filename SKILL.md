@@ -30,6 +30,21 @@ If a user request is ambiguous about target, default to **working**. Only write 
 - If the user says "refresh", "update", "latest", or asks for data newer than the cache, call the tool with `refresh=True`. The cache layer decides whether to append-merge or full-overwrite.
 - There is no background streaming. Data is updated only on explicit user request.
 
+## Date ranges from natural language
+
+When the user asks for a time-bounded view ("BTC for 2022-2023", "last 6 months", "since the Fed pivot"), convert to ISO `start`/`end` and pass them through:
+
+- `"2022-2023"` → `start="2022-01-01", end="2023-12-31"`
+- `"Q4 2024"` → `start="2024-10-01", end="2024-12-31"`
+- `"last 6 months"` → compute from today's date in env
+- `"since 2020"` → `start="2020-01-01"` (no end)
+- `"first half of 2023"` → `start="2023-01-01", end="2023-06-30"`
+
+Where to pass them:
+- **At fetch time** (preferred) — set `start`/`end` on the `DataRef` when calling `create_dashboard_card`. The adapter slices server-side, the cache stores just that window, and the chart only renders that range.
+- **Post-fetch** — call `tools.filter_by_date(df, start, end)` on any DataFrame the source returns. Works regardless of source/kind because every adapter normalizes to a `DatetimeIndex`.
+- **Pattern detection** — `detect_channels`, `detect_breakouts`, and `detect_patterns_vision` all accept `start`/`end` directly, so "find a channel in BTC during 2024-Q4" doesn't need a separate slicing step.
+
 ## Pattern detection UX
 
 When the user asks for channels, patterns, or breakouts, **default to the vision path** unless they explicitly ask for the algorithmic detector or "both":
