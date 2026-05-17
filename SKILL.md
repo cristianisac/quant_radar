@@ -79,7 +79,32 @@ Source introspection (Phase 10):
 | `tools.list_sources()` | Return every source with its capabilities (intervals, history, coverage, auth, rate limits, status). Read this at the **start of a session** so you know which source covers what. |
 | `tools.describe_source(name)` | Look up one source's capability by name. |
 | `tools.probe_history(symbol, source="yfinance", kind="ohlcv")` | Hit the API and report the actual earliest/latest bar for a specific asset. Uses `refresh=True` to bypass the cache. Use it when the user asks *"how far back does this go?"* or before fetching a long series for the first time. |
-| `tools.search_fred(query, limit=20)` | Keyword search across FRED's ~800k-series catalog (sorted by FRED's popularity). Use when the user describes a series you don't recognize — e.g. *"is there a FRED series for the housing starts?"* → `search_fred("housing starts")` → pick the top result. Requires `FRED_API_KEY`; returns `[]` if unset. |
+
+### Discovery (universal contract)
+
+Every source implements `search(query, limit)` + `describe(name)` so the agent has the same lookup affordances regardless of which API you're touching:
+
+| Tool | Purpose |
+|---|---|
+| `tools.search_source(source, query, limit=20)` | Generic search dispatched by source name. Returns `[{symbol, longname, ...source-specific fields}]`. |
+| `tools.describe_symbol(source, name)` | Generic per-symbol long-form metadata. Returns `None` if the symbol isn't recognized. |
+| `tools.list_searchable_sources()` | Snapshot of which sources are currently registered + their status. |
+| `tools.search_fred(query, limit=20)` | FRED keyword search (~800k series). Returns `id/longname/frequency/units/observation_start/popularity/notes`. Requires `FRED_API_KEY`. |
+| `tools.search_yfinance(query, limit=10)` | yfinance keyword search via Yahoo. Returns `symbol/longname/exchange/quote_type/sector/industry`. **Yahoo doesn't expose a full exchange listing** — this is the only discovery path. |
+| `tools.search_binance(query, limit=20)` | Binance spot-pair search. Matches "Bitcoin" or "BTC" → BTCUSDT. Long names from a canonical map (top assets) + CoinGecko fallback. |
+| `tools.list_binance_pairs(quote="USDT")` | Enumerate every Binance spot pair (filterable by quote). Yes, fully enumerable — ~2000 pairs total. |
+
+**When to reach for these** — any time the user mentions a name/keyword you don't already recognize as an exact symbol. Run search first, pick the top hit, then create the card. Don't guess at tickers.
+
+### Adding a new source
+
+Every new adapter MUST satisfy the `Source` ABC's four methods:
+- `supports(ref)` — gate dispatch
+- `fetch(ref, refresh)` — hydrate the data
+- `search(query, limit)` — find candidates by keyword (return `[]` if upstream genuinely doesn't support it)
+- `describe(name)` — per-symbol long-form metadata (return `None` if unsupported)
+
+Plus a catalog entry declaring `schema={kind: [columns]}`. The integration audit script (`scripts/integration_audit.py`) will fail if any of these are missing.
 
 **Capability cheatsheet** (the catalog has the canonical text):
 - **yfinance** — daily/weekly/monthly from listing date (AAPL: 1980+, TSLA: 2010-06-29 IPO, BTC-USD: 2014-09-17). Intraday only 7–730 days back depending on interval. Cache-first; rate limits are aggressive.

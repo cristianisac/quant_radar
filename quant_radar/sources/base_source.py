@@ -26,7 +26,20 @@ if TYPE_CHECKING:
 
 
 class Source(ABC):
-    """Adapter contract. One subclass per upstream API."""
+    """Adapter contract. One subclass per upstream API.
+
+    Every adapter must satisfy four capabilities so the agent has the
+    same level of discovery on every source:
+
+    - ``supports(ref)`` — gate dispatch
+    - ``fetch(ref, refresh)`` — hydrate the data
+    - ``search(query, limit)`` — find candidate symbols by keyword
+    - ``describe(name)`` — look up the long-form metadata for one symbol
+
+    ``search`` and ``describe`` may return empty/None when the upstream
+    genuinely doesn't expose those affordances, but the *method must
+    exist* — that's how the agent knows it can ask the question.
+    """
 
     capability: "SourceCapability"
 
@@ -41,6 +54,30 @@ class Source(ABC):
     @abstractmethod
     def fetch(self, ref: "DataRef", *, refresh: bool = False) -> "pd.DataFrame":
         """Fetch the frame for ``ref``. Must respect ``ref.start/end``."""
+
+    @abstractmethod
+    def search(self, query: str, *, limit: int = 20) -> list[dict]:
+        """Search for symbols matching ``query``.
+
+        Return a list of ``{symbol, longname, ...}`` dicts. ``symbol`` is
+        required, ``longname`` strongly encouraged. Other keys (exchange,
+        sector, frequency, units, notes, ...) are source-specific but
+        should be informative.
+
+        Return ``[]`` when search is unsupported or upstream is
+        unreachable — silent failure is fine because callers treat
+        empty as "discovery unavailable".
+        """
+
+    @abstractmethod
+    def describe(self, name: str) -> dict | None:
+        """Return long-form metadata for one ``name`` (the symbol/series id).
+
+        Return ``None`` if the symbol isn't recognized OR the upstream
+        doesn't expose per-symbol metadata. Keys are source-specific —
+        FRED returns title/notes/units, yfinance returns longName/
+        sector/industry/exchange, etc.
+        """
 
 
 _REGISTRY: dict[str, Source] = {}

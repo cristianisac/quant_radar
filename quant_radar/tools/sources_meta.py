@@ -21,6 +21,7 @@ from quant_radar.sources import (
     fred_src,
     yfinance_src,
 )
+from quant_radar.sources.base_source import all_sources, get_source
 
 # Far enough back that any real API will be the limiting factor.
 _FAR_BACK = datetime(1970, 1, 1, tzinfo=UTC)
@@ -85,22 +86,94 @@ def probe_history(
     }
 
 
-def search_fred(query: str, *, limit: int = 20) -> list[dict[str, Any]]:
-    """Search FRED's ~800k-series catalog by keyword.
+def search_source(
+    source: str, query: str, *, limit: int = 20
+) -> list[dict[str, Any]]:
+    """Generic discovery — search any registered source by keyword.
 
-    Lets the agent answer "is there a FRED series for X?" on demand
-    rather than hard-coding popular series. Returns a list of
-    ``{id, title, frequency, observation_start, observation_end,
-    popularity}`` dicts ordered by FRED's own popularity score.
+    Every adapter implements the same ``search(query, limit)`` contract,
+    so this dispatches by source name. Use it when the user names a
+    source explicitly ("look up XLF on yfinance", "find me a Binance
+    pair for SUI"). Each hit always has ``symbol`` + (when available)
+    ``longname``; extra source-specific keys (frequency/units/notes for
+    FRED, exchange/sector for yfinance, base/quote for Binance) come
+    along for free.
 
-    Returns ``[]`` if ``FRED_API_KEY`` is unset or the upstream is
-    unreachable — the agent should treat empty results as "discovery
-    unavailable" rather than "nothing matches".
-
-    Examples:
-        >>> search_fred("unemployment", limit=5)
-        [{"id": "UNRATE", "title": "Unemployment Rate", ...}, ...]
-        >>> search_fred("10 year treasury")
-        [{"id": "DGS10", "title": "Market Yield...", ...}, ...]
+    Returns ``[]`` if the source is unknown or upstream is unreachable.
     """
-    return fred_src.search_series(query, limit=limit)
+    src = get_source(source)
+    if src is None:
+        return []
+    return src.search(query, limit=limit)
+
+
+def describe_symbol(source: str, name: str) -> dict[str, Any] | None:
+    """Generic per-symbol metadata — works on any registered source.
+
+    Returns the long-form description for one symbol/series on
+    ``source``. For FRED that's title/notes/units; for yfinance it's
+    longName/sector/industry/exchange/summary; for Binance it's
+    base/quote with a long pair name from CoinGecko.
+
+    Returns ``None`` if the symbol isn't recognized or the upstream
+    doesn't expose metadata.
+    """
+    src = get_source(source)
+    if src is None:
+        return None
+    return src.describe(name)
+
+
+def list_searchable_sources() -> list[dict[str, Any]]:
+    """Quick sanity probe — which sources currently support search?
+
+    The ABC requires every source to *define* ``search`` and
+    ``describe``, but a source may legitimately return ``[]`` /
+    ``None`` (e.g. deferred or unreachable). This calls each one with a
+    no-op query to see who actually responds.
+    """
+    return [
+        {
+            "source": s.name,
+            "status": s.capability.status,
+            "kinds": s.capability.kinds,
+        }
+        for s in all_sources()
+    ]
+
+
+# --- Convenience wrappers ----------------------------------------------
+# Thin shortcuts around search_source / describe_symbol for the agent's
+# most common discovery flows. Reach for these when the source is fixed
+# at call time.
+
+
+def search_fred(query: str, *, limit: int = 20) -> list[dict[str, Any]]:
+    """FRED keyword search (~800k series). Requires ``FRED_API_KEY``."""
+    return search_source("fred", query, limit=limit)
+
+
+def search_yfinance(query: str, *, limit: int = 10) -> list[dict[str, Any]]:
+    """yfinance keyword search via Yahoo's quote endpoint.
+
+    Yahoo doesn't expose a full exchange list, so this is the only way
+    to discover symbols. Returns longname/exchange/quoteType/sector.
+    """
+    return search_source("yfinance", query, limit=limit)
+
+
+def search_binance(query: str, *, limit: int = 20) -> list[dict[str, Any]]:
+    """Binance spot-pair search. Matches against pair symbol + base
+    long name (e.g. "Bitcoin" or "BTC" both find BTCUSDT)."""
+    return search_source("binance", query, limit=limit)
+
+
+def list_binance_pairs(
+    quote: str | None = None, *, status: str = "TRADING"
+) -> list[dict[str, Any]]:
+    """Enumerate Binance spot pairs (filterable by quote currency).
+
+    Pass ``quote="USDT"`` for USDT pairs only. Long names from CoinGecko
+    are included per pair.
+    """
+    return binance_src.list_pairs(quote=quote, status=status)

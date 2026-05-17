@@ -134,12 +134,80 @@ def fetch_ohlcv(
     )
 
 
+def search_symbols(query: str, *, limit: int = 10) -> list[dict]:
+    """Search Yahoo Finance for matching tickers by keyword.
+
+    Returns ``[{symbol, longname, shortname, exchange, quote_type,
+    sector, industry, score}, ...]``. Lets the agent answer the
+    user-said-"Apple"-find-AAPL flow when the exact ticker isn't known.
+
+    Yahoo doesn't expose a full exchange listing, so this is the only
+    discovery surface for yfinance — there's no "enumerate everything".
+
+    Returns ``[]`` silently if the upstream call fails.
+    """
+    if not query.strip():
+        return []
+    try:
+        s = yf.Search(
+            query,
+            max_results=max(1, min(int(limit), 50)),
+            news_count=0,
+            lists_count=0,
+            include_research=False,
+            include_nav_links=False,
+            include_cultural_assets=False,
+            raise_errors=False,
+        )
+        quotes = s.quotes or []
+    except Exception:
+        return []
+    return [
+        {
+            "symbol": q.get("symbol"),
+            "longname": q.get("longname") or q.get("shortname"),
+            "shortname": q.get("shortname"),
+            "exchange": q.get("exchDisp") or q.get("exchange"),
+            "quote_type": q.get("quoteType"),
+            "sector": q.get("sectorDisp") or q.get("sector"),
+            "industry": q.get("industryDisp") or q.get("industry"),
+            "score": q.get("score"),
+        }
+        for q in quotes
+        if q.get("symbol")
+    ]
+
+
 # --- Source-ABC adapter ---------------------------------------------------
 # Registered at import time so ``hydrate`` can dispatch via the registry.
 
 from quant_radar.cards.spec import DataRef as _DataRef  # noqa: E402
 from quant_radar.sources.base_source import Source, register_source  # noqa: E402
 from quant_radar.sources.catalog import CATALOG  # noqa: E402
+
+
+def _describe_symbol(symbol: str) -> dict | None:
+    """Return longName/sector/industry/exchange for one yfinance symbol."""
+    try:
+        info = yf.Ticker(symbol).info or {}
+    except Exception:
+        return None
+    long_name = info.get("longName") or info.get("shortName")
+    if not long_name:
+        # Treat "no metadata" as "not a real symbol" — Yahoo returns a
+        # mostly-empty dict for unknown tickers.
+        return None
+    return {
+        "symbol": symbol,
+        "longname": long_name,
+        "shortname": info.get("shortName"),
+        "exchange": info.get("fullExchangeName") or info.get("exchange"),
+        "quote_type": info.get("quoteType"),
+        "sector": info.get("sector"),
+        "industry": info.get("industry"),
+        "currency": info.get("currency"),
+        "summary": (info.get("longBusinessSummary") or "")[:400],
+    }
 
 
 class _YFinanceSource(Source):
@@ -156,6 +224,12 @@ class _YFinanceSource(Source):
             end=ref.end,
             refresh=refresh,
         )
+
+    def search(self, query: str, *, limit: int = 20) -> list[dict]:
+        return search_symbols(query, limit=limit)
+
+    def describe(self, name: str) -> dict | None:
+        return _describe_symbol(name)
 
 
 register_source(_YFinanceSource())

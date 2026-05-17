@@ -36,9 +36,15 @@ from quant_radar.tools.patterns import (
 )
 from quant_radar.tools.sources_meta import (
     describe_source,
+    describe_symbol,
+    list_binance_pairs,
+    list_searchable_sources,
     list_sources,
     probe_history,
+    search_binance,
     search_fred,
+    search_source,
+    search_yfinance,
 )
 
 __all__ = [
@@ -52,12 +58,15 @@ __all__ = [
     "compute_returns",
     "create_dashboard_card",
     "describe_source",
+    "describe_symbol",
     "detect_breakouts",
     "detect_channels",
     "detect_patterns_vision",
     "fetch_news",
-    "filter_by_date",
     "fetch_top_headlines",
+    "filter_by_date",
+    "list_binance_pairs",
+    "list_searchable_sources",
     "list_sources",
     "load_dashboard",
     "new_working_dashboard",
@@ -68,7 +77,10 @@ __all__ = [
     "rolling_zscore",
     "save_card_to_dashboard",
     "score_sentiment",
+    "search_binance",
     "search_fred",
+    "search_source",
+    "search_yfinance",
     "summarize_news",
     "tools_for_ref",
     "update_card",

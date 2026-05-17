@@ -24,8 +24,15 @@ from quant_radar.sources.base import ttl_for_interval
 
 SOURCE = "binance"
 _BASE = "https://api.binance.com/api/v3/klines"
+_EXCHANGE_INFO_URL = "https://api.binance.com/api/v3/exchangeInfo"
+_COINGECKO_LIST_URL = "https://api.coingecko.com/api/v3/coins/list"
 _TIMEOUT = 15
 _LIMIT_MAX = 1000
+
+# Cached at first use. Binance doesn't return asset long names, so we
+# enrich from CoinGecko's free /coins/list endpoint (no key required).
+_EXCHANGE_INFO_CACHE: list[dict] | None = None
+_ASSET_NAME_CACHE: dict[str, str] = {}
 
 _INTERVAL_MAP = {
     "1m": "1m",
@@ -179,6 +186,182 @@ from quant_radar.sources.base_source import Source, register_source  # noqa: E40
 from quant_radar.sources.catalog import CATALOG  # noqa: E402
 
 
+def _load_exchange_info() -> list[dict]:
+    """Cached list of every spot pair from /api/v3/exchangeInfo.
+
+    Each entry: ``{symbol, baseAsset, quoteAsset, status}``. Cached for
+    the process lifetime; the agent rarely sees new listings within a
+    session.
+    """
+    global _EXCHANGE_INFO_CACHE
+    if _EXCHANGE_INFO_CACHE is not None:
+        return _EXCHANGE_INFO_CACHE
+    try:
+        resp = requests.get(_EXCHANGE_INFO_URL, timeout=_TIMEOUT)
+        resp.raise_for_status()
+        symbols = resp.json().get("symbols", []) or []
+    except (requests.RequestException, ValueError):
+        _EXCHANGE_INFO_CACHE = []
+        return _EXCHANGE_INFO_CACHE
+    _EXCHANGE_INFO_CACHE = [
+        {
+            "symbol": s.get("symbol"),
+            "baseAsset": s.get("baseAsset"),
+            "quoteAsset": s.get("quoteAsset"),
+            "status": s.get("status"),
+        }
+        for s in symbols
+        if s.get("symbol")
+    ]
+    return _EXCHANGE_INFO_CACHE
+
+
+# Canonical mapping for major assets. CoinGecko's /coins/list contains
+# thousands of memecoins squatting on the same symbol codes (a coin
+# called "batcat" with symbol "BTC", an "Abstract Bridged USDT" with
+# symbol "USDT"), so we override the top assets explicitly and use
+# CoinGecko only for the long tail.
+_CANONICAL_ASSET_NAMES: dict[str, str] = {
+    "BTC": "Bitcoin",
+    "ETH": "Ethereum",
+    "USDT": "Tether",
+    "USDC": "USD Coin",
+    "BUSD": "Binance USD",
+    "FDUSD": "First Digital USD",
+    "TUSD": "TrueUSD",
+    "DAI": "Dai",
+    "BNB": "BNB",
+    "XRP": "XRP",
+    "ADA": "Cardano",
+    "SOL": "Solana",
+    "DOGE": "Dogecoin",
+    "TRX": "TRON",
+    "DOT": "Polkadot",
+    "MATIC": "Polygon",
+    "POL": "Polygon",
+    "LTC": "Litecoin",
+    "BCH": "Bitcoin Cash",
+    "AVAX": "Avalanche",
+    "LINK": "Chainlink",
+    "SHIB": "Shiba Inu",
+    "UNI": "Uniswap",
+    "ATOM": "Cosmos",
+    "ETC": "Ethereum Classic",
+    "XLM": "Stellar",
+    "NEAR": "NEAR Protocol",
+    "APT": "Aptos",
+    "ARB": "Arbitrum",
+    "OP": "Optimism",
+    "INJ": "Injective",
+    "SUI": "Sui",
+    "TIA": "Celestia",
+    "TON": "Toncoin",
+    "PEPE": "Pepe",
+    "WIF": "dogwifhat",
+    "ETH2": "Ethereum 2.0",
+    "EUR": "Euro",
+    "GBP": "British Pound",
+}
+
+
+def _load_asset_names() -> dict[str, str]:
+    """Map asset symbol (uppercase) -> long name.
+
+    Returns the canonical mapping for top assets merged with CoinGecko's
+    /coins/list for the long tail. Cached for the process lifetime.
+    Returns the canonical-only map silently if CoinGecko fails.
+    """
+    if _ASSET_NAME_CACHE:
+        return _ASSET_NAME_CACHE
+    # Canonical entries always win.
+    _ASSET_NAME_CACHE.update(_CANONICAL_ASSET_NAMES)
+    try:
+        resp = requests.get(_COINGECKO_LIST_URL, timeout=_TIMEOUT)
+        resp.raise_for_status()
+        for c in resp.json() or []:
+            sym = (c.get("symbol") or "").upper()
+            name = c.get("name")
+            # Skip if canonical already covers it; otherwise take the
+            # first CoinGecko hit for the long tail.
+            if sym and name and sym not in _ASSET_NAME_CACHE:
+                _ASSET_NAME_CACHE[sym] = name
+    except (requests.RequestException, ValueError):
+        pass
+    return _ASSET_NAME_CACHE
+
+
+def _pair_longname(base: str, quote: str) -> str:
+    """E.g. ('BTC','USDT') -> 'Bitcoin / Tether (USDT)'."""
+    names = _load_asset_names()
+    base_name = names.get(base.upper(), base)
+    quote_name = names.get(quote.upper(), quote)
+    return f"{base_name} / {quote_name} ({quote})"
+
+
+def list_pairs(*, quote: str | None = None, status: str = "TRADING") -> list[dict]:
+    """Enumerate Binance spot pairs, optionally filtered by quote currency.
+
+    Returns ``[{symbol, base, quote, base_longname, longname, status}, ...]``.
+    Long names come from CoinGecko (free, no key); unmapped assets fall
+    back to the asset code.
+    """
+    names = _load_asset_names()
+    out: list[dict] = []
+    for p in _load_exchange_info():
+        if status and p["status"] != status:
+            continue
+        if quote and p["quoteAsset"] != quote.upper():
+            continue
+        base = p["baseAsset"]
+        q = p["quoteAsset"]
+        base_name = names.get(base.upper(), base) if base else None
+        out.append({
+            "symbol": p["symbol"],
+            "base": base,
+            "quote": q,
+            "base_longname": base_name,
+            "longname": _pair_longname(base, q) if base and q else None,
+            "status": p["status"],
+        })
+    return out
+
+
+def search_pairs(query: str, *, limit: int = 20) -> list[dict]:
+    """Substring search over Binance pair symbols + base-asset long names.
+
+    Matches case-insensitively against the raw pair (BTCUSDT) and the
+    base long name (Bitcoin), so the user can say "Bitcoin" or "BTC"
+    or "BTCUSDT".
+    """
+    if not query.strip():
+        return []
+    q = query.upper().strip()
+    pairs = list_pairs()
+    # Rank: exact symbol > base match > longname contains.
+    scored: list[tuple[int, dict]] = []
+    for p in pairs:
+        sym = (p.get("symbol") or "").upper()
+        base = (p.get("base") or "").upper()
+        ln = (p.get("base_longname") or "").upper()
+        if sym == q:
+            scored.append((3, p))
+        elif base == q:
+            scored.append((2, p))
+        elif q in sym or q in ln:
+            scored.append((1, p))
+    scored.sort(key=lambda t: -t[0])
+    return [p for _, p in scored[:limit]]
+
+
+def describe_pair(pair: str) -> dict | None:
+    """Return metadata for one Binance spot pair (case-insensitive)."""
+    target = to_binance_symbol(pair).upper()
+    for p in list_pairs():
+        if p["symbol"] == target:
+            return p
+    return None
+
+
 class _BinanceSource(Source):
     capability = CATALOG["binance"]
 
@@ -193,6 +376,12 @@ class _BinanceSource(Source):
             end=ref.end,
             refresh=refresh,
         )
+
+    def search(self, query: str, *, limit: int = 20) -> list[dict]:
+        return search_pairs(query, limit=limit)
+
+    def describe(self, name: str) -> dict | None:
+        return describe_pair(name)
 
 
 register_source(_BinanceSource())

@@ -257,19 +257,110 @@ def check_rolling_zscore() -> None:
         record("rolling_zscore on macro", False, f"{type(e).__name__}: {e}")
 
 
-def check_fred_search() -> None:
-    print("\n=== 8. FRED keyword search ===")
+def check_discovery_per_source() -> None:
+    """Every source must satisfy search(query) and describe(name) per ABC."""
+    print("\n=== 8. Discovery contract — search + describe on every source ===")
+
+    # FRED
     try:
         hits = tools.search_fred("unemployment", limit=5)
-        ids = [h.get("id") for h in hits]
-        ok = bool(hits) and any("UNRATE" in (h.get("id") or "") for h in hits)
+        ok = any("UNRATE" in (h.get("symbol") or "") for h in hits)
         record(
             "search_fred('unemployment') surfaces UNRATE",
             ok,
-            f"top hits: {ids}",
+            f"symbols: {[h.get('symbol') for h in hits]}",
         )
+        if hits:
+            sample = hits[0]
+            record(
+                "  fred hit carries longname + frequency + units + notes",
+                bool(sample.get("longname")) and "frequency" in sample
+                and "units" in sample and "notes" in sample,
+                f"keys={sorted(sample.keys())}",
+            )
     except Exception as e:
         record("search_fred", False, f"{type(e).__name__}: {e}")
+
+    try:
+        meta = tools.describe_symbol("fred", "DGS10")
+        record(
+            "describe_symbol('fred','DGS10') returns title + units + notes",
+            bool(meta and meta.get("longname") and meta.get("units")
+                 and meta.get("notes")),
+            f"longname={meta.get('longname') if meta else None!r}, "
+            f"notes_len={len(meta.get('notes') or '') if meta else 0}",
+        )
+    except Exception as e:
+        record("describe_symbol(fred,DGS10)", False, f"{type(e).__name__}: {e}")
+
+    # yfinance
+    try:
+        hits = tools.search_yfinance("Apple", limit=3)
+        ok = any(h.get("symbol") == "AAPL" for h in hits)
+        record(
+            "search_yfinance('Apple') surfaces AAPL with longname",
+            ok and any(h.get("longname") for h in hits),
+            f"top: {[(h.get('symbol'), h.get('longname')) for h in hits]}",
+        )
+    except Exception as e:
+        record("search_yfinance", False, f"{type(e).__name__}: {e}")
+
+    try:
+        meta = tools.describe_symbol("yfinance", "AAPL")
+        record(
+            "describe_symbol('yfinance','AAPL') returns longname + sector",
+            bool(meta and meta.get("longname") and meta.get("sector")),
+            f"longname={meta.get('longname') if meta else None!r}, "
+            f"sector={meta.get('sector') if meta else None!r}",
+        )
+    except Exception as e:
+        record("describe_symbol(yfinance,AAPL)", False, f"{type(e).__name__}: {e}")
+
+    # Binance
+    try:
+        pairs = tools.list_binance_pairs(quote="USDT")
+        ok = len(pairs) > 100  # USDT pairs are easily 200+
+        record(
+            "list_binance_pairs(quote='USDT') enumerates pairs",
+            ok,
+            f"count={len(pairs)} (sample: {[p['symbol'] for p in pairs[:3]]})",
+        )
+    except Exception as e:
+        record("list_binance_pairs", False, f"{type(e).__name__}: {e}")
+
+    try:
+        hits = tools.search_binance("Bitcoin", limit=5)
+        btc_top = hits and hits[0].get("symbol", "").startswith("BTC")
+        has_longname = hits and "Bitcoin" in (hits[0].get("longname") or "")
+        record(
+            "search_binance('Bitcoin') surfaces BTC pairs with long name",
+            bool(btc_top and has_longname),
+            f"top: {hits[0].get('symbol') if hits else None} → "
+            f"{hits[0].get('longname') if hits else None}",
+        )
+    except Exception as e:
+        record("search_binance", False, f"{type(e).__name__}: {e}")
+
+    try:
+        meta = tools.describe_symbol("binance", "BTCUSDT")
+        record(
+            "describe_symbol('binance','BTCUSDT') resolves long name",
+            bool(meta and meta.get("longname") and "Bitcoin" in meta["longname"]),
+            f"longname={meta.get('longname') if meta else None!r}",
+        )
+    except Exception as e:
+        record("describe_symbol(binance,BTCUSDT)", False, f"{type(e).__name__}: {e}")
+
+    # Cross-source generic dispatch sanity.
+    try:
+        registered = {s["source"] for s in tools.list_searchable_sources()}
+        record(
+            "every source registers a search+describe surface (ABC contract)",
+            {"fred", "yfinance", "binance", "coinpaprika"}.issubset(registered),
+            f"registered: {sorted(registered)}",
+        )
+    except Exception as e:
+        record("list_searchable_sources", False, f"{type(e).__name__}: {e}")
 
 
 def check_pattern_detection() -> None:
@@ -309,7 +400,7 @@ def main() -> int:
         check_date_filtering,
         check_fred_title,
         check_rolling_zscore,
-        check_fred_search,
+        check_discovery_per_source,
         check_pattern_detection,
     ):
         try:
