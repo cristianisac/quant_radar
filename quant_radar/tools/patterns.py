@@ -16,6 +16,7 @@ calls these tools.
 
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
 
@@ -24,6 +25,8 @@ import pandas as pd
 from quant_radar.analytics import patterns
 from quant_radar.analytics.indicators import atr
 from quant_radar.analytics.vision import render_chart_png
+from quant_radar.tools.compat import requires_columns
+from quant_radar.tools.dataframe import filter_by_date
 
 VISION_INSTRUCTIONS = (
     "Open the image at `image_path` with your Read tool, then look for chart "
@@ -35,6 +38,7 @@ VISION_INSTRUCTIONS = (
 )
 
 
+@requires_columns("close")
 def detect_channels(
     df: pd.DataFrame,
     *,
@@ -44,7 +48,14 @@ def detect_channels(
     min_touches: int = 3,
     confidence_threshold: float = 0.65,
     min_r2: float = 0.55,
+    start: datetime | str | None = None,
+    end: datetime | str | None = None,
 ) -> dict[str, Any]:
+    """``start``/``end`` slice the frame *before* the lookback is applied,
+    so e.g. ``end="2024-12-31"`` runs detection on the last 60 bars of 2024.
+    """
+    if start is not None or end is not None:
+        df = filter_by_date(df, start=start, end=end)
     if price_col not in df.columns:
         raise ValueError(f"price column '{price_col}' not in DataFrame")
     return patterns.detect_channel(
@@ -57,6 +68,7 @@ def detect_channels(
     )
 
 
+@requires_columns("close")
 def detect_breakouts(
     df: pd.DataFrame,
     channel: dict | None = None,
@@ -65,8 +77,15 @@ def detect_breakouts(
     lookback: int = 60,
     confidence_threshold: float = 0.6,
     use_atr_filter: bool = True,
+    start: datetime | str | None = None,
+    end: datetime | str | None = None,
 ) -> dict[str, Any]:
-    """If ``channel`` is not provided, one is detected automatically first."""
+    """If ``channel`` is not provided, one is detected automatically first.
+
+    ``start``/``end`` slice the frame so detection runs on a specific window.
+    """
+    if start is not None or end is not None:
+        df = filter_by_date(df, start=start, end=end)
     if price_col not in df.columns:
         raise ValueError(f"price column '{price_col}' not in DataFrame")
     ch = channel or detect_channels(
@@ -87,17 +106,24 @@ def detect_breakouts(
     )
 
 
+@requires_columns("close")
 def detect_patterns_vision(
     df: pd.DataFrame,
     *,
     asset_name: str,
     title: str | None = None,
+    start: datetime | str | None = None,
+    end: datetime | str | None = None,
 ) -> dict[str, Any]:
     """Render the chart and ask the calling agent to read it.
 
     Returns ``{"image_path": str, "instructions": str}``. The agent uses
     its own Read tool on ``image_path`` — no external API call here.
+    ``start``/``end`` restrict the rendered window so the LLM only sees
+    the period the user asked about.
     """
+    if start is not None or end is not None:
+        df = filter_by_date(df, start=start, end=end)
     path: Path = render_chart_png(df, asset_name=asset_name, title=title)
     return {
         "image_path": str(path),

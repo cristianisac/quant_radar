@@ -103,3 +103,25 @@ def series_title(series_id: str) -> str | None:
         _TITLE_CACHE[series_id] = short
         return short
     return None
+
+
+# --- Source-ABC adapter ---------------------------------------------------
+
+from quant_radar.cards.spec import DataRef as _DataRef  # noqa: E402
+from quant_radar.sources.base_source import Source, register_source  # noqa: E402
+from quant_radar.sources.catalog import CATALOG  # noqa: E402
+
+
+class _FredSource(Source):
+    capability = CATALOG["fred"]
+
+    def supports(self, ref: _DataRef) -> bool:
+        return ref.source == SOURCE and ref.kind == "macro"
+
+    def fetch(self, ref: _DataRef, *, refresh: bool = False) -> pd.DataFrame:
+        return fetch_macro_series(
+            ref.name, start=ref.start, end=ref.end, refresh=refresh,
+        )
+
+
+register_source(_FredSource())

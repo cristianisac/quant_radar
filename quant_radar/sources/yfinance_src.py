@@ -132,3 +132,30 @@ def fetch_ohlcv(
         refresh=refresh,
         ttl_seconds=ttl_for_interval(interval),
     )
+
+
+# --- Source-ABC adapter ---------------------------------------------------
+# Registered at import time so ``hydrate`` can dispatch via the registry.
+
+from quant_radar.cards.spec import DataRef as _DataRef  # noqa: E402
+from quant_radar.sources.base_source import Source, register_source  # noqa: E402
+from quant_radar.sources.catalog import CATALOG  # noqa: E402
+
+
+class _YFinanceSource(Source):
+    capability = CATALOG["yfinance"]
+
+    def supports(self, ref: _DataRef) -> bool:
+        return ref.source == SOURCE and ref.kind == "ohlcv"
+
+    def fetch(self, ref: _DataRef, *, refresh: bool = False) -> pd.DataFrame:
+        return fetch_ohlcv(
+            ref.name,
+            interval=ref.interval,
+            start=ref.start,
+            end=ref.end,
+            refresh=refresh,
+        )
+
+
+register_source(_YFinanceSource())

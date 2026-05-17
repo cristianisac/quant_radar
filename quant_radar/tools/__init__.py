@@ -4,6 +4,12 @@ from quant_radar.tools.analytics import (
     compute_indicators,
     compute_returns,
 )
+from quant_radar.tools.compat import (
+    all_requirements,
+    requirements_for,
+    tools_for_ref,
+)
+from quant_radar.tools.dataframe import filter_by_date
 from quant_radar.tools.cards import (
     add_annotation,
     close_working_dashboard,
@@ -35,6 +41,7 @@ from quant_radar.tools.sources_meta import (
 
 __all__ = [
     "add_annotation",
+    "all_requirements",
     "analyze_indicators",
     "analyze_moving_averages",
     "channel_annotations",
@@ -47,6 +54,7 @@ __all__ = [
     "detect_channels",
     "detect_patterns_vision",
     "fetch_news",
+    "filter_by_date",
     "fetch_top_headlines",
     "list_sources",
     "load_dashboard",
@@ -54,8 +62,10 @@ __all__ = [
     "persist_dashboard",
     "probe_history",
     "remove_card",
+    "requirements_for",
     "save_card_to_dashboard",
     "score_sentiment",
     "summarize_news",
+    "tools_for_ref",
     "update_card",
 ]

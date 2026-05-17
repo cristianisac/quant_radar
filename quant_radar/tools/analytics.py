@@ -16,6 +16,7 @@ from quant_radar.analytics.ma import analyze_moving_averages as _analyze_ma
 from quant_radar.analytics.regime import classify_rsi, classify_volatility
 from quant_radar.analytics.returns import DEFAULT_PERIODS
 from quant_radar.analytics.returns import compute_returns as _compute_returns
+from quant_radar.tools.compat import requires_columns
 
 _INDICATOR_SPECS = {
     "sma_50": lambda df: indicators.sma(df["close"], 50),
@@ -37,6 +38,7 @@ DEFAULT_INDICATORS: tuple[str, ...] = (
 )
 
 
+@requires_columns("close")
 def compute_returns(
     df: pd.DataFrame,
     *,
@@ -49,6 +51,7 @@ def compute_returns(
     return _compute_returns(cast(pd.Series, df[price_col]), periods=periods)
 
 
+@requires_columns("close")
 def compute_indicators(
     df: pd.DataFrame,
     *,
@@ -75,6 +78,7 @@ def _macd_columns(df: pd.DataFrame) -> pd.DataFrame:
     return macd(cast(pd.Series, df["close"]))
 
 
+@requires_columns("close")
 def analyze_moving_averages(
     df: pd.DataFrame,
     *,
@@ -93,6 +97,7 @@ def analyze_moving_averages(
     )
 
 
+@requires_columns("close", "high", "low")
 def analyze_indicators(df: pd.DataFrame) -> dict[str, str]:
     """Return state labels for RSI and volatility based on the last bar."""
     enriched = compute_indicators(df, indicators=("rsi", "atr"))
