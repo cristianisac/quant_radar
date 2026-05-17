@@ -83,3 +83,24 @@ def probe_history(
         "last": last,
         "bars": int(len(df)),
     }
+
+
+def search_fred(query: str, *, limit: int = 20) -> list[dict[str, Any]]:
+    """Search FRED's ~800k-series catalog by keyword.
+
+    Lets the agent answer "is there a FRED series for X?" on demand
+    rather than hard-coding popular series. Returns a list of
+    ``{id, title, frequency, observation_start, observation_end,
+    popularity}`` dicts ordered by FRED's own popularity score.
+
+    Returns ``[]`` if ``FRED_API_KEY`` is unset or the upstream is
+    unreachable — the agent should treat empty results as "discovery
+    unavailable" rather than "nothing matches".
+
+    Examples:
+        >>> search_fred("unemployment", limit=5)
+        [{"id": "UNRATE", "title": "Unemployment Rate", ...}, ...]
+        >>> search_fred("10 year treasury")
+        [{"id": "DGS10", "title": "Market Yield...", ...}, ...]
+    """
+    return fred_src.search_series(query, limit=limit)

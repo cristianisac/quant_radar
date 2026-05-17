@@ -22,6 +22,24 @@ def ema(s: pd.Series, period: int) -> pd.Series:
     return cast(pd.Series, s.ewm(span=period, adjust=False, min_periods=period).mean())
 
 
+def rolling_zscore(s: pd.Series, window: int = 30, min_obs: int = 30) -> pd.Series:
+    """(x - rolling mean) / rolling std over a trailing ``window``.
+
+    Returns NaN for any position with fewer than ``min_obs`` observations
+    so early-period values don't produce spurious z-scores from tiny
+    samples. ``window`` and ``min_obs`` are independent — pass a smaller
+    ``min_obs`` to start emitting values earlier, but ≥ 30 is the
+    standard guard against thin samples.
+    """
+    if window < 2:
+        raise ValueError(f"window must be >= 2 (got {window})")
+    if min_obs < 2:
+        raise ValueError(f"min_obs must be >= 2 (got {min_obs})")
+    mean = s.rolling(window=window, min_periods=min_obs).mean()
+    std = s.rolling(window=window, min_periods=min_obs).std()
+    return cast(pd.Series, (s - mean) / std)
+
+
 def rsi(s: pd.Series, period: int = 14) -> pd.Series:
     """Relative Strength Index using Wilder's smoothing."""
     delta = s.diff()

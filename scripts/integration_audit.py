@@ -228,6 +228,50 @@ def check_fred_title() -> None:
     )
 
 
+def check_rolling_zscore() -> None:
+    print("\n=== 7. Rolling z-score on OHLCV + macro frames ===")
+    df = hydrate(DataRef(source="binance", kind="ohlcv", name="BTCUSDT", interval="1d"))
+    try:
+        out = tools.rolling_zscore(df, window=30, min_obs=30)
+        col = "zscore_30"
+        ok = col in out.columns and out[col].iloc[:29].isna().all() and out[col].iloc[60:].notna().any()
+        record(
+            "rolling_zscore on OHLCV close (window=30)",
+            ok,
+            f"col added, warmup respected, tail-mean={out[col].iloc[-30:].mean():.3f}",
+        )
+    except Exception as e:
+        record("rolling_zscore on OHLCV", False, f"{type(e).__name__}: {e}")
+
+    macro = hydrate(DataRef(source="fred", kind="macro", name="DGS10"))
+    try:
+        out = tools.rolling_zscore(macro, column="value", window=90)
+        col = "zscore_90"
+        ok = col in out.columns and out[col].iloc[120:].notna().any()
+        record(
+            "rolling_zscore on FRED macro 'value' column (window=90)",
+            ok,
+            f"tail-mean={out[col].iloc[-30:].mean():.3f}",
+        )
+    except Exception as e:
+        record("rolling_zscore on macro", False, f"{type(e).__name__}: {e}")
+
+
+def check_fred_search() -> None:
+    print("\n=== 8. FRED keyword search ===")
+    try:
+        hits = tools.search_fred("unemployment", limit=5)
+        ids = [h.get("id") for h in hits]
+        ok = bool(hits) and any("UNRATE" in (h.get("id") or "") for h in hits)
+        record(
+            "search_fred('unemployment') surfaces UNRATE",
+            ok,
+            f"top hits: {ids}",
+        )
+    except Exception as e:
+        record("search_fred", False, f"{type(e).__name__}: {e}")
+
+
 def check_pattern_detection() -> None:
     print("\n=== 7. Pattern detection (algo + vision) ===")
     df = hydrate(DataRef(source="binance", kind="ohlcv", name="BTCUSDT", interval="1d"))
@@ -264,6 +308,8 @@ def main() -> int:
         check_tools_on_real_data,
         check_date_filtering,
         check_fred_title,
+        check_rolling_zscore,
+        check_fred_search,
         check_pattern_detection,
     ):
         try:

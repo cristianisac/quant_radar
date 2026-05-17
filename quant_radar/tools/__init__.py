@@ -3,6 +3,7 @@ from quant_radar.tools.analytics import (
     analyze_moving_averages,
     compute_indicators,
     compute_returns,
+    rolling_zscore,
 )
 from quant_radar.tools.compat import (
     all_requirements,
@@ -37,6 +38,7 @@ from quant_radar.tools.sources_meta import (
     describe_source,
     list_sources,
     probe_history,
+    search_fred,
 )
 
 __all__ = [
@@ -63,8 +65,10 @@ __all__ = [
     "probe_history",
     "remove_card",
     "requirements_for",
+    "rolling_zscore",
     "save_card_to_dashboard",
     "score_sentiment",
+    "search_fred",
     "summarize_news",
     "tools_for_ref",
     "update_card",

@@ -24,6 +24,7 @@ from quant_radar.sources.base import TTL_MACRO_SEC
 SOURCE = "fred"
 _CSV_URL = "https://fred.stlouisfed.org/graph/fredgraph.csv"
 _SERIES_URL = "https://api.stlouisfed.org/fred/series"
+_SEARCH_URL = "https://api.stlouisfed.org/fred/series/search"
 _TIMEOUT = 15
 
 _TITLE_CACHE: dict[str, str] = {}
@@ -103,6 +104,47 @@ def series_title(series_id: str) -> str | None:
         _TITLE_CACHE[series_id] = short
         return short
     return None
+
+
+def search_series(query: str, *, limit: int = 20) -> list[dict]:
+    """Search FRED's ~800k-series catalog by keyword.
+
+    Returns a list of ``{id, title, frequency, observation_start,
+    observation_end, popularity}`` dicts ordered by FRED's own popularity
+    ranking. Returns ``[]`` silently if ``FRED_API_KEY`` is missing or the
+    upstream is unreachable — search is opportunistic.
+    """
+    api_key = os.environ.get("FRED_API_KEY")
+    if not api_key or not query.strip():
+        return []
+    try:
+        resp = requests.get(
+            _SEARCH_URL,
+            params={
+                "search_text": query,
+                "api_key": api_key,
+                "file_type": "json",
+                "limit": max(1, min(int(limit), 1000)),
+                "order_by": "popularity",
+                "sort_order": "desc",
+            },
+            timeout=_TIMEOUT,
+        )
+        resp.raise_for_status()
+        payload = resp.json()
+    except (requests.RequestException, ValueError):
+        return []
+    out: list[dict] = []
+    for s in payload.get("seriess", []) or []:
+        out.append({
+            "id": s.get("id"),
+            "title": s.get("title"),
+            "frequency": s.get("frequency_short") or s.get("frequency"),
+            "observation_start": s.get("observation_start"),
+            "observation_end": s.get("observation_end"),
+            "popularity": s.get("popularity"),
+        })
+    return out
 
 
 # --- Source-ABC adapter ---------------------------------------------------
