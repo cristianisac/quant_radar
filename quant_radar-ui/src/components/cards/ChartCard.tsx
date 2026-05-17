@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef } from "react";
 
 import { useDataRef } from "../../api/data";
 import { atr, ema, rsi, sma, yoyPercent } from "../../lib/indicators";
-import { labelFor, subplotLabel } from "../../lib/labels";
+import { friendlyName, subplotLabel } from "../../lib/labels";
 import type { Annotation, Card, TimeSeriesResponse } from "../../lib/types";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -128,7 +128,7 @@ function buildFigure(
   const nRows = 1 + subplots.length;
   const traces: object[] = [];
 
-  const primaryName = labelFor(data.name);
+  const primaryName = pickLabel(data.name, data.display_name);
   if (isOhlcv) {
     traces.push({
       type: "candlestick", x,
@@ -155,11 +155,12 @@ function buildFigure(
   if (hasSecond) {
     const cols2 = second.columns;
     const close2 = cols2.close ?? cols2.value ?? [];
+    const secondName = pickLabel(second.name, second.display_name);
     traces.push({
       type: "scatter", mode: "lines",
       x: second.timestamps, y: close2,
       line: { color: "#fbbf24", width: 1.5 },
-      name: labelFor(second.name),
+      name: secondName,
       xaxis: "x",
       yaxis: `y${secondAxisIndex}`,
       showlegend: true,
@@ -286,6 +287,16 @@ function buildFigure(
     layout.margin = { l: 50, r: 50, t: 10, b: 40 };
   }
   return { traces, layout };
+}
+
+// Label priority: curated dictionary (most concise) → server display_name
+// (e.g. FRED API title, accurate but verbose) → raw symbol. Each tier is
+// a fallback for the next, so unknown FRED codes still get a real title.
+function pickLabel(symbol: string, serverDisplayName?: string | null): string {
+  const curated = friendlyName(symbol);
+  if (curated) return `${symbol} — ${curated}`;
+  if (serverDisplayName) return `${symbol} — ${serverDisplayName}`;
+  return symbol;
 }
 
 function isSupportedSubplot(s: string, cols: Record<string, number[]>): boolean {

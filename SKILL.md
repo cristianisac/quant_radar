@@ -32,11 +32,16 @@ If a user request is ambiguous about target, default to **working**. Only write 
 
 ## Pattern detection UX
 
-When the user asks for channels, patterns, or breakouts, **ask first**:
+When the user asks for channels, patterns, or breakouts, **default to the vision path** unless they explicitly ask for the algorithmic detector or "both":
 
-> "Algorithmic detectors, LLM-vision detectors, or both?"
+1. Call `tools.detect_patterns_vision(df, asset_name=...)` to render the chart
+2. `Read` the returned `image_path` and identify patterns visually
+3. Report each pattern with a confidence ∈ [0, 1]; draw only if confidence ≥ 0.7
+4. If you cannot find a high-confidence pattern visually, fall back to `tools.detect_channels(df, ...)` (algorithmic) and report its `confidence`; draw only if ≥ 0.65
 
-Then call the corresponding tool(s). If confidence is below threshold, do not draw — say so plainly.
+If the user says "both", run both paths and reconcile — prefer the visual finding unless the algorithm has materially higher confidence on a different pattern.
+
+If neither path clears its threshold, say so plainly. Do not draw.
 
 ## Tools
 
@@ -184,11 +189,7 @@ Pattern detection (Phase 5):
 | `tools.detect_patterns_vision(df, asset_name, title=None)` | dict with `image_path` and `instructions`. **Then call your Read tool on `image_path`** to view the chart and interpret patterns yourself. No API call. |
 | `tools.channel_annotations(df, channel)` | returns 2 Annotation dicts (upper + lower trendlines) — feed to `add_annotation` to draw the channel on a card. |
 
-**The pattern-detection UX is mandatory.** When the user asks for channels, breakouts, or patterns, **ask first**:
-
-> "Algorithmic detectors, LLM-vision detectors, or both?"
-
-Then call the corresponding tool(s). If confidence is below threshold, do not draw — say plainly that no pattern was found at high enough confidence.
+**Default to the vision path** (`detect_patterns_vision` → `Read` the PNG → identify patterns). Fall back to `detect_channels` only if no high-confidence visual pattern is found, or the user explicitly asks for the algorithmic detector. Threshold ≥ 0.7 for vision, ≥ 0.65 for algorithmic. If neither clears, say plainly that no pattern was found at high enough confidence — do not draw.
 
 News + sentiment (Phase 6):
 

@@ -42,9 +42,14 @@ echo "────────────────────────�
 
 # 1. FastAPI in Docker (loopback-only, sandboxed)
 make docker-build >/dev/null
+ENV_FILE_ARG=()
+if [[ -f "${REPO_DIR}/.env" ]]; then
+    ENV_FILE_ARG=(--env-file "${REPO_DIR}/.env")
+fi
 docker run --rm \
     --read-only --tmpfs /tmp --tmpfs /app/data \
     --security-opt no-new-privileges --cap-drop ALL \
+    "${ENV_FILE_ARG[@]}" \
     -v "${REPO_DIR}/data:/app/data" \
     -p 127.0.0.1:${API_PORT}:${API_PORT} \
     quant-radar:dev \
