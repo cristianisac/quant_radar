@@ -40,10 +40,19 @@ echo "────────────────────────�
 # Build the image (includes the React bundle baked in via the Node stage).
 make docker-build >/dev/null
 
+# --env-file passes FRED_API_KEY (and any future secret) into the API
+# container without ever showing it on the command line. Skipped if no
+# .env exists.
+ENV_FILE_ARG=()
+if [[ -f "${REPO_DIR}/.env" ]]; then
+    ENV_FILE_ARG=(--env-file "${REPO_DIR}/.env")
+fi
+
 # 1. FastAPI in Docker (serves both /api/* and the React bundle at /).
 docker run --rm \
     --read-only --tmpfs /tmp --tmpfs /home/radar/.streamlit \
     --security-opt no-new-privileges --cap-drop ALL \
+    "${ENV_FILE_ARG[@]}" \
     -v "${REPO_DIR}/data:/app/data" \
     -p 127.0.0.1:${API_PORT}:${API_PORT} \
     quant-radar:dev \

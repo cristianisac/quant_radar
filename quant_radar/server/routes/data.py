@@ -16,6 +16,7 @@ from fastapi import APIRouter, HTTPException
 
 from quant_radar.cards.spec import DataRef
 from quant_radar.server.schemas import TimeSeriesResponse
+from quant_radar.sources import fred_src
 from quant_radar.sources.hydrate import hydrate
 
 router = APIRouter()
@@ -39,10 +40,12 @@ def get_data(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
+    display_name = _resolve_display_name(source, name)
+
     if not isinstance(df.index, pd.DatetimeIndex) or len(df) == 0:
         return TimeSeriesResponse(
             source=source, kind=kind, name=name, interval=interval,
-            timestamps=[], columns={},
+            timestamps=[], columns={}, display_name=display_name,
         )
 
     timestamps = [cast(pd.Timestamp, ts).to_pydatetime() for ts in df.index]
@@ -52,5 +55,11 @@ def get_data(
     }
     return TimeSeriesResponse(
         source=source, kind=kind, name=name, interval=interval,
-        timestamps=timestamps, columns=columns,
+        timestamps=timestamps, columns=columns, display_name=display_name,
     )
+
+
+def _resolve_display_name(source: str, name: str) -> str | None:
+    if source == "fred":
+        return fred_src.series_title(name)
+    return None

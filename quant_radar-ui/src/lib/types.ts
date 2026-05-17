@@ -58,6 +58,7 @@ export interface TimeSeriesResponse {
   interval: string;
   timestamps: string[];
   columns: Record<string, number[]>;
+  display_name?: string | null;
 }
 
 export interface SourceCapability {

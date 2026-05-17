@@ -66,3 +66,7 @@ class TimeSeriesResponse(BaseModel):
     interval: str
     timestamps: list[datetime]
     columns: dict[str, list[float]]
+    # Human-readable name resolved per source (e.g. FRED "title" for
+    # DGS10 → "10-Year Treasury Constant Maturity Rate"). None when no
+    # friendly name is available — the UI falls back to ``name``.
+    display_name: str | None = None

@@ -28,10 +28,15 @@ HARDEN = --read-only --tmpfs /tmp --tmpfs /app/data \
 # Lint/type/test never need the host cache.
 DOCKER_RUN_EPHEMERAL = $(DOCKER) run --rm $(HARDEN) quant-radar:dev
 
+# --env-file is silently ignored if .env is absent, so the developer
+# never has to set FRED_API_KEY for the rest of the stack to start.
+ENV_FILE_ARG = $(if $(wildcard .env),--env-file .env,)
+
 # Interactive sessions bind-mount ./data so cached parquet survives.
 DOCKER_RUN_PERSISTENT = $(DOCKER) run --rm -it \
 		--read-only --tmpfs /tmp \
 		--security-opt no-new-privileges --cap-drop ALL \
+		$(ENV_FILE_ARG) \
 		-v "$(PWD)/data:/app/data"
 
 docker-build:
