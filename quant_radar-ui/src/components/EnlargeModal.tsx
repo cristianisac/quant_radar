@@ -27,11 +27,11 @@ export function EnlargeModal({ card, onClose }: Props) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6"
+      className="fixed inset-0 z-50 bg-bg flex items-stretch"
       onClick={onClose}
     >
       <div
-        className="bg-bg border border-border rounded-xl w-full max-w-6xl h-[85vh] flex flex-col overflow-hidden"
+        className="bg-bg w-screen h-screen flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center px-4 py-2 border-b border-border">
@@ -44,9 +44,9 @@ export function EnlargeModal({ card, onClose }: Props) {
             ✕ close (Esc)
           </button>
         </div>
-        <div className="flex-1 overflow-hidden p-4">
+        <div className="flex-1 overflow-hidden p-4 min-h-0">
           {(card.type === "chart" || card.type === "combo") && (
-            <ChartCard card={card} height={Math.floor(window.innerHeight * 0.7)} enlarged />
+            <ChartCard card={card} enlarged />
           )}
           {card.type === "news" && <NewsCard card={card} />}
           {card.type === "sentiment" && <SentimentCard card={card} />}
