@@ -1,10 +1,11 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import GridLayoutLib, { WidthProvider, type Layout } from "react-grid-layout";
 
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 
-import { useCards } from "../api/cards";
+import { deleteCard, saveCardToMain, useCards } from "../api/cards";
 import type { Card, Target } from "../lib/types";
 
 import { AnalysisCard } from "./cards/AnalysisCard";
@@ -49,7 +50,6 @@ const EMPTY_WORKING =
 interface Props {
   target: Target;
   density: number;
-  refreshSec: number;
   onEnlarge: (card: Card) => void;
 }
 
@@ -95,15 +95,27 @@ function defaultLayout(cards: Card[], density: number): Layout[] {
   });
 }
 
-export function CardGrid({ target, density, refreshSec, onEnlarge }: Props) {
-  const { data: cards = [], isLoading, error } = useCards(target, refreshSec * 1000);
+export function CardGrid({ target, density, onEnlarge }: Props) {
+  const { data: cards = [], isLoading, error } = useCards(target);
   const [layout, setLayout] = useState<Layout[]>([]);
+  const queryClient = useQueryClient();
 
   const baseLayout = useMemo(() => defaultLayout(cards, density), [cards, density]);
 
   useEffect(() => {
     setLayout(baseLayout);
   }, [baseLayout]);
+
+  async function handleSave(card: Card) {
+    await saveCardToMain(card.id);
+    queryClient.invalidateQueries({ queryKey: ["cards", "main"] });
+  }
+
+  async function handleDelete(card: Card) {
+    if (!window.confirm(`Delete "${card.title}" from ${target}?`)) return;
+    await deleteCard(card.id, target);
+    queryClient.invalidateQueries({ queryKey: ["cards", target] });
+  }
 
   if (isLoading) return <div className="text-muted text-sm">Loading cards…</div>;
   if (error)
@@ -136,14 +148,37 @@ export function CardGrid({ target, density, refreshSec, onEnlarge }: Props) {
           <div className="drag-handle absolute top-1 left-1 px-1 text-xs text-muted cursor-move select-none z-10">
             ⠿
           </div>
-          <button
-            type="button"
-            onClick={() => onEnlarge(c)}
-            className="absolute top-1 right-1 px-1 text-xs text-muted hover:text-accent z-10"
-            title="Enlarge"
-          >
-            ⛶
-          </button>
+          <div className="absolute top-1 right-1 flex gap-2 text-xs z-10">
+            {target === "working" && (
+              <button
+                type="button"
+                onClick={() => handleSave(c)}
+                className="text-muted hover:text-accent"
+                title="Save to main"
+                data-testid="save-card"
+              >
+                ★
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => handleDelete(c)}
+              className="text-muted hover:text-red-400"
+              title={`Delete from ${target}`}
+              data-testid="delete-card"
+            >
+              ✕
+            </button>
+            <button
+              type="button"
+              onClick={() => onEnlarge(c)}
+              className="text-muted hover:text-accent"
+              title="Enlarge"
+              data-testid="enlarge-card"
+            >
+              ⛶
+            </button>
+          </div>
           {renderCard(c)}
         </div>
       ))}
