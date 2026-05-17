@@ -79,6 +79,7 @@ Source introspection (Phase 10):
 | `tools.list_sources()` | Return every source with its capabilities (intervals, history, coverage, auth, rate limits, status). Read this at the **start of a session** so you know which source covers what. |
 | `tools.describe_source(name)` | Look up one source's capability by name. |
 | `tools.probe_history(symbol, source="yfinance", kind="ohlcv")` | Hit the API and report the actual earliest/latest bar for a specific asset. Uses `refresh=True` to bypass the cache. Use it when the user asks *"how far back does this go?"* or before fetching a long series for the first time. |
+| `tools.search_fred(query, limit=20)` | Keyword search across FRED's ~800k-series catalog (sorted by FRED's popularity). Use when the user describes a series you don't recognize — e.g. *"is there a FRED series for the housing starts?"* → `search_fred("housing starts")` → pick the top result. Requires `FRED_API_KEY`; returns `[]` if unset. |
 
 **Capability cheatsheet** (the catalog has the canonical text):
 - **yfinance** — daily/weekly/monthly from listing date (AAPL: 1980+, TSLA: 2010-06-29 IPO, BTC-USD: 2014-09-17). Intraday only 7–730 days back depending on interval. Cache-first; rate limits are aggressive.
@@ -167,6 +168,7 @@ Analytics (importable as `from quant_radar import tools`):
 | `tools.compute_indicators(df, indicators=("sma_50","sma_200","rsi","atr","macd"))` | enriched DataFrame |
 | `tools.analyze_moving_averages(df, fast_period=50, slow_period=200, asset="X")` | dict with above/below 50d/200d, 50d-vs-200d, catching-up-from-below, golden/death cross, summary |
 | `tools.analyze_indicators(df)` | `{"rsi_state": "overbought\|oversold\|neutral", "volatility_regime": "high\|elevated\|normal\|low"}` |
+| `tools.rolling_zscore(df, column="close", window=30, min_obs=30)` | enriched DataFrame with a `zscore_{window}` column. Trailing-window (x - mean) / std. `min_obs` defaults to 30 so the first few weeks are NaN, preventing spurious z-scores from thin samples. Pass `column="value"` for FRED macro series. |
 
 Cards (Phase 3 — `from quant_radar import tools`):
 | Tool | Purpose |

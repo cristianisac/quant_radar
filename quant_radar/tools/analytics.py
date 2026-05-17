@@ -97,6 +97,33 @@ def analyze_moving_averages(
     )
 
 
+def rolling_zscore(
+    df: pd.DataFrame,
+    *,
+    column: str = "close",
+    window: int = 30,
+    min_obs: int = 30,
+) -> pd.DataFrame:
+    """Append a ``zscore_{window}`` column with rolling z-score of ``column``.
+
+    Works on any frame that has the named column (yfinance OHLCV defaults
+    to ``close``; for FRED macro pass ``column='value'``). ``min_obs`` is
+    the standard 30-observation guard — z-scores from <30 points are too
+    noisy to act on. Pass a smaller value to override.
+
+    Examples:
+        >>> rolling_zscore(yf_btc_df)                # 30d zscore of close
+        >>> rolling_zscore(fred_dgs10_df, column='value', window=90)
+    """
+    if column not in df.columns:
+        raise ValueError(f"column '{column}' not in DataFrame (have: {list(df.columns)})")
+    out = df.copy()
+    out[f"zscore_{window}"] = indicators.rolling_zscore(
+        cast(pd.Series, df[column]), window=window, min_obs=min_obs
+    )
+    return out
+
+
 @requires_columns("close", "high", "low")
 def analyze_indicators(df: pd.DataFrame) -> dict[str, str]:
     """Return state labels for RSI and volatility based on the last bar."""
