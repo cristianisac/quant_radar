@@ -51,18 +51,24 @@ def record(name: str, passed: bool, detail: str = "") -> None:
 
 
 def check_catalog_coverage() -> None:
+    """News sources (gdelt/finnhub) intentionally don't conform to the
+    time-series Source ABC — they return list[dict] articles, not DataFrames.
+    Every *other* active catalog entry MUST register a Source subclass.
+    """
     print("\n=== 1. Catalog coverage ===")
+    NEWS_SOURCES = {"gdelt", "finnhub"}
     registry_names = {s.name for s in all_sources()}
     catalog_names = set(CATALOG.keys())
     missing_in_catalog = registry_names - catalog_names
-    missing_in_registry = (catalog_names - registry_names) - {"gdelt", "finnhub"}
+    missing_in_registry = (catalog_names - registry_names) - NEWS_SOURCES
     record(
         "every registered source has a catalog entry",
         not missing_in_catalog,
         f"missing: {missing_in_catalog}" if missing_in_catalog else "",
     )
     record(
-        "every data-source catalog entry has a registered adapter",
+        "every time-series catalog entry has a registered adapter "
+        "(news sources excluded by design)",
         not missing_in_registry,
         f"missing: {missing_in_registry}" if missing_in_registry else "",
     )

@@ -1,16 +1,28 @@
-"""Source ABC + registry — the plug-and-play surface for data adapters.
+"""Source ABC + registry — the plug-and-play surface for *time-series* adapters.
 
-Each adapter module declares a ``Source`` subclass with three things:
+Scope: this ABC is for sources that produce a ``pandas.DataFrame`` with a
+``DatetimeIndex``. News sources (``gdelt``, ``finnhub``) return
+``list[dict]`` of articles instead and intentionally don't conform —
+see ``quant_radar.tools.news`` and SKILL.md's "News sources" section.
+
+Each adapter module declares a ``Source`` subclass with four methods:
 
 1. ``capability`` — its ``SourceCapability`` from the catalog (columns,
    intervals, auth, etc.)
 2. ``supports(ref)`` — does this source handle a given ``DataRef``?
 3. ``fetch(ref, refresh)`` — return the normalized DataFrame.
+4. ``search(query, limit)`` + ``describe(name)`` — discovery surface
+   (per the universal contract; return ``[]``/``None`` if upstream
+   genuinely doesn't expose them).
 
 Subclasses register themselves at import time via ``register_source``
 so ``hydrate()`` becomes a one-line registry lookup. Adding a new
 source is: write the module, register the class, add a catalog entry.
 No changes to the dispatch layer.
+
+See ``scripts/scaffold_source.py`` for a scaffold generator, and
+SKILL.md "Adding a new source — the waterfall" for the four-step
+shortlist (existing lib → OpenBB → MCP → hand-written).
 """
 
 from __future__ import annotations

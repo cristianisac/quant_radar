@@ -96,15 +96,28 @@ Every source implements `search(query, limit)` + `describe(name)` so the agent h
 
 **When to reach for these** — any time the user mentions a name/keyword you don't already recognize as an exact symbol. Run search first, pick the top hit, then create the card. Don't guess at tickers.
 
-### Adding a new source
+### Adding a new source — the waterfall
 
-Every new adapter MUST satisfy the `Source` ABC's four methods:
+Don't write a 100-line adapter when an existing tool already covers it. Check each step in order and stop at the first match:
+
+1. **Existing Python lib?** (`yfinance`, `fredapi`, `python-binance`, `polygon-api-client`, `alpha-vantage`, ...) → your `fetch()` is a thin wrapper around the lib. ~30 LOC.
+2. **OpenBB Platform provider?** `openbb-platform` ships ~100 vetted providers (Polygon, Tiingo, FMP, Intrinio, ...). If yes, `fetch()` calls `obb.<provider>.<command>(...)`. ~30 LOC. (`pip install openbb` if needed.)
+3. **Official MCP server?** Check [modelcontextprotocol.io/servers](https://modelcontextprotocol.io/servers) and the vendor's docs. If yes, federate via `claude mcp add` at the user level — the agent talks MCP directly, no adapter needed.
+4. **Otherwise, hand-write a ~100-LOC adapter.** Read the API docs (LLM-assisted is normal — paste docs + the ABC contract, ask Claude to draft).
+
+Use the scaffold:
+```
+python scripts/scaffold_source.py <name>
+```
+That generates the stub adapter + catalog entry stub with TODO markers. Then fill them in and run `python scripts/integration_audit.py` — the audit fails if any contract method is missing.
+
+**Time-series sources MUST satisfy the `Source` ABC** (4 methods + catalog `schema`):
 - `supports(ref)` — gate dispatch
-- `fetch(ref, refresh)` — hydrate the data
-- `search(query, limit)` — find candidates by keyword (return `[]` if upstream genuinely doesn't support it)
+- `fetch(ref, refresh)` — return a `DataFrame` with `DatetimeIndex` named `timestamp` and columns matching the declared schema
+- `search(query, limit)` — find candidates by keyword (return `[]` if genuinely unsupported)
 - `describe(name)` — per-symbol long-form metadata (return `None` if unsupported)
 
-Plus a catalog entry declaring `schema={kind: [columns]}`. The integration audit script (`scripts/integration_audit.py`) will fail if any of these are missing.
+**News sources have a different contract.** They return `list[dict]` of articles, not time-series, so they don't conform to the `Source` ABC. They live in the catalog (so the agent knows they exist) but use their own functions (`fetch_news`, `fetch_top_headlines`). If you add a new news source, follow the same waterfall but skip the ABC and write `fetch_<name>_news(query, ...) -> list[dict]`.
 
 **Capability cheatsheet** (the catalog has the canonical text):
 - **yfinance** — daily/weekly/monthly from listing date (AAPL: 1980+, TSLA: 2010-06-29 IPO, BTC-USD: 2014-09-17). Intraday only 7–730 days back depending on interval. Cache-first; rate limits are aggressive.
