@@ -31,3 +31,7 @@ export function saveCardToMain(id: string): Promise<{ ok: boolean }> {
 export function deleteCard(id: string, target: Target): Promise<{ ok: boolean }> {
   return apiDelete(`/api/cards/${id}?target=${target}`);
 }
+
+export function clearDashboard(target: Target): Promise<{ removed: number }> {
+  return apiPost(`/api/cards/clear?target=${target}`);
+}
