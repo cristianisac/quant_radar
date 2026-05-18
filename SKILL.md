@@ -95,6 +95,11 @@ Every source implements `search(query, limit)` + `describe(name)` so the agent h
 
 **When to reach for these** — any time the user mentions a name/keyword you don't already recognize as an exact symbol. Run search first, pick the top hit, then create the card. Don't guess at tickers.
 
+### Known future opportunities
+
+- **OpenBB Platform integration** — `pip install openbb` (~311MB) gives access to ~100 vetted financial data providers (FMP, Tiingo, Intrinio, Polygon, Federal Reserve, BLS, IMF, OECD, SEC EDGAR, etc.) through a unified API. Adding it would mean any of those providers becomes a 20-LOC subclass of an `_OpenBBSource` adapter rather than a 100-LOC hand-written one. Deferred until there's a concrete need — installing the meta-package is a one-time architectural commitment worth doing as its own focused PR.
+- **finnhub-python swap** — current finnhub adapter uses raw `requests` (~78 LOC). The official `finnhub-python` client would consolidate to ~50 LOC and unlock 50+ extra Finnhub endpoints (forex, fundamentals, earnings, calendar). Skipped because the test-mock refactor offsets the LOC savings; revisit when we actually want those endpoints.
+
 ### Adding a new source — the waterfall
 
 Don't write a 100-line adapter when an existing tool already covers it. Check each step in order and stop at the first match:
