@@ -95,9 +95,17 @@ Every source implements `search(query, limit)` + `describe(name)` so the agent h
 
 **When to reach for these** — any time the user mentions a name/keyword you don't already recognize as an exact symbol. Run search first, pick the top hit, then create the card. Don't guess at tickers.
 
-### Known future opportunities
+### OpenBB MCP (live, ad-hoc fallback)
 
-- **OpenBB Platform integration** — `pip install openbb` (~311MB) gives access to ~100 vetted financial data providers (FMP, Tiingo, Intrinio, Polygon, Federal Reserve, BLS, IMF, OECD, SEC EDGAR, etc.) through a unified API. Adding it would mean any of those providers becomes a 20-LOC subclass of an `_OpenBBSource` adapter rather than a 100-LOC hand-written one. Deferred until there's a concrete need — installing the meta-package is a one-time architectural commitment worth doing as its own focused PR.
+If the user asks for data from a source we don't have a native adapter for (Polygon, FMP, Tiingo, Intrinio, BLS, IMF, OECD, SEC, etc.), reach for the OpenBB MCP **before** considering a new adapter. Tools appear as `mcp__openbb__*`. The MCP exposes ~100 providers without our 311MB install:
+
+- For one-shot queries ("what's Polygon's latest AAPL price?"), call the MCP tool directly — no card needed.
+- For something the user wants on the dashboard, create a card with `type="analysis"` containing the MCP-fetched values rendered as markdown, OR write a thin `_OpenBBSource` adapter (~20 LOC) if it'll be used repeatedly.
+- The MCP requires API keys for paid providers (FMP_API_KEY, TIINGO_API_KEY, POLYGON_API_KEY, etc.); fails gracefully when missing.
+
+This is the realized "step 2" in the new-source waterfall (existing lib → OpenBB → MCP federation → hand-written). For native sources we already have (yfinance / binance / fred), keep using them — they're tighter, have custom bug fixes, and our card system flows through them cleanly.
+
+### Other deferred opportunities
 - **finnhub-python swap** — current finnhub adapter uses raw `requests` (~78 LOC). The official `finnhub-python` client would consolidate to ~50 LOC and unlock 50+ extra Finnhub endpoints (forex, fundamentals, earnings, calendar). Skipped because the test-mock refactor offsets the LOC savings; revisit when we actually want those endpoints.
 
 ### Adding a new source — the waterfall
