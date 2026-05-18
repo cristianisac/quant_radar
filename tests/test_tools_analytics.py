@@ -56,6 +56,27 @@ def test_compute_indicators_ambiguous_columns_raises():
         tools.compute_indicators(df)
 
 
+def test_compute_indicators_parametric_sma_ema_any_period():
+    """Agent can request sma_137 or ema_42 without touching code."""
+    df = _ohlcv(300)
+    out = tools.compute_indicators(df, which=("sma_137", "ema_42", "sma_5"))
+    assert "sma_137" in out.columns
+    assert "ema_42" in out.columns
+    assert "sma_5" in out.columns
+    # Sanity: sma_5 should warm up by row 4, sma_137 by row 136.
+    assert pd.isna(out["sma_5"].iloc[3])
+    assert not pd.isna(out["sma_5"].iloc[10])
+    assert pd.isna(out["sma_137"].iloc[135])
+    assert not pd.isna(out["sma_137"].iloc[200])
+
+
+def test_compute_indicators_rsi_and_atr_take_period_suffix():
+    df = _ohlcv(60)
+    out = tools.compute_indicators(df, which=("rsi_21", "atr_28"))
+    assert "rsi_21" in out.columns
+    assert "atr_28" in out.columns
+
+
 def test_compute_indicators_auto_picks_value_on_fred_like_frame():
     """Column-agnostic: tools transparently use `value` when there's no
     `close` (the FRED macro convention).

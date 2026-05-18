@@ -9,19 +9,38 @@ import type { Annotation, Card, TimeSeriesResponse } from "../../lib/types";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const Plotly_ = Plotly as any;
 
-const OVERLAY_FN: Record<string, (close: number[]) => (number | null)[]> = {
-  sma_50: (c) => sma(c, 50),
-  sma_200: (c) => sma(c, 200),
-  ema_12: (c) => ema(c, 12),
-  ema_26: (c) => ema(c, 26),
-};
+// Parametric overlay resolution: any sma_<N> or ema_<N> works without
+// editing a hardcoded dictionary. The agent can ask for sma_137 or
+// ema_500 and the chart renders it — no rebuild, no code change.
+const OVERLAY_RE = /^(sma|ema)_(\d+)$/;
 
-const OVERLAY_COLOR: Record<string, string> = {
-  sma_50: "#22c55e",
-  sma_200: "#ef4444",
-  ema_12: "#3b82f6",
-  ema_26: "#a855f7",
-};
+function overlayFn(name: string): ((close: number[]) => (number | null)[]) | null {
+  const m = OVERLAY_RE.exec(name);
+  if (!m) return null;
+  const period = parseInt(m[2], 10);
+  if (!Number.isFinite(period) || period < 2) return null;
+  return m[1] === "sma" ? (c) => sma(c, period) : (c) => ema(c, period);
+}
+
+// Stable hashed colour so the same overlay name keeps the same colour
+// across renders without us curating a per-period palette. 8 well-
+// separated dark-bg hues; deterministic mapping from the overlay name.
+const OVERLAY_PALETTE = [
+  "#22c55e", // green
+  "#ef4444", // red
+  "#3b82f6", // blue
+  "#a855f7", // purple
+  "#14b8a6", // teal
+  "#f43f5e", // pink
+  "#f97316", // orange
+  "#facc15", // yellow
+];
+
+function overlayColor(name: string): string {
+  let h = 0;
+  for (let i = 0; i < name.length; i += 1) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return OVERLAY_PALETTE[h % OVERLAY_PALETTE.length];
+}
 
 interface Props {
   card: Card;
@@ -168,11 +187,11 @@ function buildFigure(
   }
 
   for (const overlay of spec?.overlays ?? []) {
-    const fn = OVERLAY_FN[overlay];
+    const fn = overlayFn(overlay);
     if (!fn) continue;
     traces.push({
       type: "scatter", mode: "lines", x, y: fn(close),
-      line: { color: OVERLAY_COLOR[overlay] ?? "#fbbf24", width: 1 },
+      line: { color: overlayColor(overlay), width: 1 },
       name: overlay, xaxis: "x", yaxis: "y",
     });
   }

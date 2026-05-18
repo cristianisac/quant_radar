@@ -215,7 +215,7 @@ Analytics (importable as `from quant_radar import tools`):
 | Tool | Returns |
 |---|---|
 | `tools.compute_returns(df, periods=("1d","1w","1m","1y","yoy","ytd"))` | `dict[str, float \| None]` |
-| `tools.compute_indicators(df, indicators=("sma_50","sma_200","rsi","atr","macd"))` | enriched DataFrame |
+| `tools.compute_indicators(df, which=("sma_50","sma_200","rsi","atr","macd"))` | enriched DataFrame. **SMA/EMA/RSI/ATR are parametric**: `sma_<N>`, `ema_<N>`, `rsi[_<N>]`, `atr[_<N>]` for any N≥2. Request `sma_137` or `ema_42` — no code edit needed, both the Python tool and the chart overlay renderer parse the period from the key. |
 | `tools.analyze_moving_averages(df, fast_period=50, slow_period=200, asset="X")` | dict with above/below 50d/200d, 50d-vs-200d, catching-up-from-below, golden/death cross, summary |
 | `tools.analyze_indicators(df)` | `{"rsi_state": ..., "volatility_regime": ... or None}`. `volatility_regime` is `None` on non-OHLCV frames (no ATR possible). |
 | `tools.rolling_zscore(df, column=None, window=30, min_obs=30)` | enriched DataFrame with a `zscore_{window}` column. Trailing-window (x - mean) / std. `min_obs` defaults to 30 to guard against thin samples. |
