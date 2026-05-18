@@ -25,7 +25,7 @@ import pandas as pd
 from quant_radar.analytics import patterns
 from quant_radar.analytics.indicators import atr
 from quant_radar.analytics.vision import render_chart_png
-from quant_radar.tools.compat import requires_columns
+from quant_radar.tools.analytics import _pick_price_column
 from quant_radar.tools.dataframe import filter_by_date
 
 VISION_INSTRUCTIONS = (
@@ -38,11 +38,10 @@ VISION_INSTRUCTIONS = (
 )
 
 
-@requires_columns("close")
 def detect_channels(
     df: pd.DataFrame,
     *,
-    price_col: str = "close",
+    price_col: str | None = None,
     lookback: int = 60,
     swing_distance: int = 5,
     min_touches: int = 3,
@@ -51,15 +50,16 @@ def detect_channels(
     start: datetime | str | None = None,
     end: datetime | str | None = None,
 ) -> dict[str, Any]:
-    """``start``/``end`` slice the frame *before* the lookback is applied,
+    """Column-agnostic channel fit (close → value → only-numeric).
+
+    ``start``/``end`` slice the frame *before* the lookback is applied,
     so e.g. ``end="2024-12-31"`` runs detection on the last 60 bars of 2024.
     """
     if start is not None or end is not None:
         df = filter_by_date(df, start=start, end=end)
-    if price_col not in df.columns:
-        raise ValueError(f"price column '{price_col}' not in DataFrame")
+    col = _pick_price_column(df, hint=price_col)
     return patterns.detect_channel(
-        cast(pd.Series, df[price_col]),
+        cast(pd.Series, df[col]),
         lookback=lookback,
         swing_distance=swing_distance,
         min_touches=min_touches,
@@ -68,12 +68,11 @@ def detect_channels(
     )
 
 
-@requires_columns("close")
 def detect_breakouts(
     df: pd.DataFrame,
     channel: dict | None = None,
     *,
-    price_col: str = "close",
+    price_col: str | None = None,
     lookback: int = 60,
     confidence_threshold: float = 0.6,
     use_atr_filter: bool = True,
@@ -82,10 +81,13 @@ def detect_breakouts(
 ) -> dict[str, Any]:
     """If ``channel`` is not provided, one is detected automatically first.
 
-    ``start``/``end`` slice the frame so detection runs on a specific window.
+    Column-agnostic (close → value → only-numeric). ``start``/``end``
+    slice the frame so detection runs on a specific window. The ATR-based
+    noise filter is auto-disabled when the frame lacks high/low/close.
     """
     if start is not None or end is not None:
         df = filter_by_date(df, start=start, end=end)
+    price_col = _pick_price_column(df, hint=price_col)
     if price_col not in df.columns:
         raise ValueError(f"price column '{price_col}' not in DataFrame")
     ch = channel or detect_channels(
@@ -106,7 +108,6 @@ def detect_breakouts(
     )
 
 
-@requires_columns("close")
 def detect_patterns_vision(
     df: pd.DataFrame,
     *,

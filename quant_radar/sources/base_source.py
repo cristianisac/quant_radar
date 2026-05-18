@@ -91,6 +91,20 @@ class Source(ABC):
         sector/industry/exchange, etc.
         """
 
+    def list_all(self, *, limit: int | None = None) -> list[dict]:
+        """Enumerate every symbol/series this source offers.
+
+        Only feasible for upstreams with a bounded, listable catalog
+        (Binance ~2k spot pairs is the canonical example). For sources
+        with effectively unbounded catalogs (FRED ~800k series,
+        yfinance's open universe), this returns ``[]`` and callers
+        should reach for ``search(query)`` instead.
+
+        Default implementation returns ``[]``. Sources that *can*
+        enumerate override this method.
+        """
+        return []
+
 
 _REGISTRY: dict[str, Source] = {}
 

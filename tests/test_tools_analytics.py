@@ -47,10 +47,27 @@ def test_compute_indicators_unknown_raises():
         tools.compute_indicators(df, indicators=("bogus",))
 
 
-def test_compute_indicators_missing_close_raises():
-    df = pd.DataFrame({"open": [1.0]})
-    with pytest.raises(ValueError):
+def test_compute_indicators_ambiguous_columns_raises():
+    """When no `close`/`value` and multiple numeric columns, the tool
+    can't auto-pick a price column and must raise asking for `price_col`.
+    """
+    df = pd.DataFrame({"a": [1.0, 2.0], "b": [3.0, 4.0]})
+    with pytest.raises(ValueError, match="could not infer price column"):
         tools.compute_indicators(df)
+
+
+def test_compute_indicators_auto_picks_value_on_fred_like_frame():
+    """Column-agnostic: tools transparently use `value` when there's no
+    `close` (the FRED macro convention).
+    """
+    idx = pd.date_range("2024-01-01", periods=300, freq="D", tz="UTC")
+    df = pd.DataFrame({"value": np.linspace(1.0, 3.0, 300)}, index=idx)
+    out = tools.compute_indicators(df, which=("sma_50", "rsi"))
+    assert "sma_50" in out.columns
+    assert "rsi" in out.columns
+    # ATR is silently skipped (no high/low/close) rather than erroring.
+    out2 = tools.compute_indicators(df, which=("atr",))
+    assert "atr" not in out2.columns
 
 
 def test_compute_returns_wraps_close_column():
