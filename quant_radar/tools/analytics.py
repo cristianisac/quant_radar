@@ -95,34 +95,50 @@ def compute_indicators(
     )
 
     requested = indicators if indicators is not None else which
+    import re
+    # Parametric matchers: sma_<N>, ema_<N>, rsi_<N>, atr_<N> for any N >= 2.
+    sma_re = re.compile(r"^sma_(\d+)$")
+    ema_re = re.compile(r"^ema_(\d+)$")
+    rsi_re = re.compile(r"^rsi(?:_(\d+))?$")
+    atr_re = re.compile(r"^atr(?:_(\d+))?$")
+
     col = _pick_price_column(df, hint=price_col)
     price = cast(pd.Series, df[col])
     out = df.copy()
     for name in requested:
         if name == "macd":
             out = out.join(_macd(price), how="left")
-        elif name == "sma_50":
-            out[name] = _sma(price, 50)
-        elif name == "sma_200":
-            out[name] = _sma(price, 200)
-        elif name == "ema_12":
-            out[name] = _ema(price, 12)
-        elif name == "ema_26":
-            out[name] = _ema(price, 26)
-        elif name in ("rsi", "rsi_14"):
-            out[name] = _rsi(price, 14)
-        elif name in ("atr", "atr_14"):
-            # ATR is the only multi-column indicator we expose. Skip
-            # silently when OHLC isn't there rather than aborting the call.
+            continue
+        m = sma_re.match(name)
+        if m:
+            out[name] = _sma(price, int(m.group(1)))
+            continue
+        m = ema_re.match(name)
+        if m:
+            out[name] = _ema(price, int(m.group(1)))
+            continue
+        m = rsi_re.match(name)
+        if m:
+            period = int(m.group(1)) if m.group(1) else 14
+            out[name] = _rsi(price, period)
+            continue
+        m = atr_re.match(name)
+        if m:
+            # ATR is the only multi-column indicator. Skip silently when
+            # OHLC isn't present rather than aborting the call.
             if {"high", "low", "close"}.issubset(df.columns):
+                period = int(m.group(1)) if m.group(1) else 14
                 out[name] = _atr(
                     cast(pd.Series, df["high"]),
                     cast(pd.Series, df["low"]),
                     cast(pd.Series, df["close"]),
-                    14,
+                    period,
                 )
-        else:
-            raise ValueError(f"unknown indicator: {name}")
+            continue
+        raise ValueError(
+            f"unknown indicator: {name!r} (supported: macd, "
+            "sma_<N>, ema_<N>, rsi[_<N>], atr[_<N>] for any N >= 2)"
+        )
     return out
 
 
