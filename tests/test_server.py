@@ -102,6 +102,22 @@ def test_remove_card(client):
     assert r.json() == {"ok": False}
 
 
+def test_clear_endpoint_removes_all_cards_from_target(client):
+    # Seed 3 working cards.
+    for title in ("a", "b", "c"):
+        client.post("/api/cards", json={
+            "type": "analysis", "title": title, "analysis_markdown": "x",
+        })
+    assert len(client.get("/api/cards/working").json()) == 3
+    r = client.post("/api/cards/clear?target=working")
+    assert r.status_code == 200
+    assert r.json() == {"removed": 3}
+    assert client.get("/api/cards/working").json() == []
+    # Idempotent: clearing an empty target returns 0 (not 404).
+    r = client.post("/api/cards/clear?target=working")
+    assert r.json() == {"removed": 0}
+
+
 def test_save_to_main_promotes_card(client):
     created = client.post(
         "/api/cards",

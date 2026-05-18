@@ -14,6 +14,7 @@ from quant_radar.tools.compat import (
 from quant_radar.tools.dataframe import filter_by_date
 from quant_radar.tools.cards import (
     add_annotation,
+    clear_dashboard,
     close_working_dashboard,
     create_dashboard_card,
     load_dashboard,
@@ -56,6 +57,7 @@ __all__ = [
     "analyze_indicators",
     "analyze_moving_averages",
     "channel_annotations",
+    "clear_dashboard",
     "close_working_dashboard",
     "compute_indicators",
     "compute_returns",

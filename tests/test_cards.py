@@ -173,6 +173,31 @@ def test_remove_card_from_working():
     assert tools.load_dashboard("working") == []
 
 
+def test_clear_dashboard_working_removes_all_keeps_session_open():
+    tools.create_dashboard_card(type="analysis", title="a", analysis_markdown="x")
+    tools.create_dashboard_card(type="analysis", title="b", analysis_markdown="y")
+    tools.create_dashboard_card(type="analysis", title="c", analysis_markdown="z")
+    assert tools.clear_dashboard("working") == 3
+    assert tools.load_dashboard("working") == []
+    # The working session must remain OPEN — clearing is not closing.
+    from quant_radar.cards import store as _store
+    from quant_radar.core.config import paths
+    assert paths.working_json.exists(), "working session must stay open after clear"
+
+
+def test_clear_dashboard_main_removes_all_saved_cards():
+    card = tools.create_dashboard_card(type="analysis", title="t", analysis_markdown="x")
+    assert tools.save_card_to_dashboard(card["id"]) is True
+    assert len(tools.load_dashboard("main")) == 1
+    assert tools.clear_dashboard("main") == 1
+    assert tools.load_dashboard("main") == []
+
+
+def test_clear_dashboard_empty_returns_zero():
+    assert tools.clear_dashboard("working") == 0
+    assert tools.clear_dashboard("main") == 0
+
+
 def test_new_working_dashboard_resets():
     tools.create_dashboard_card(type="analysis", title="a", analysis_markdown="x")
     tools.create_dashboard_card(type="analysis", title="b", analysis_markdown="y")

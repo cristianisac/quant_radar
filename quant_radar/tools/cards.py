@@ -119,6 +119,15 @@ def remove_card(card_id: str | UUID, *, target: Target = "working") -> bool:
     return store.remove(card_id, target)
 
 
+def clear_dashboard(target: Target = "working") -> int:
+    """Remove every card from ``target``. Returns count removed.
+
+    Working: leaves the session open (working.json present, empty).
+    Main: drops every saved card.
+    """
+    return store.clear(target)
+
+
 def persist_dashboard(target: Target = "working") -> int:
     """Force-flush any in-memory state. Returns the number of cards persisted.
 

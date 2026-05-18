@@ -72,6 +72,14 @@ def remove_card(card_id: UUID, target: Target = "working") -> OKResponse:
     return OKResponse(ok=tools.remove_card(card_id, target=target))
 
 
+@router.post("/cards/clear", response_model=dict[str, int])
+def clear_cards(target: Target = "working") -> dict[str, int]:
+    """Remove every card from ``target`` (main or working). UI exposes
+    this as the per-tab "Clear all" button; tedious to click ✕ per card.
+    """
+    return {"removed": tools.clear_dashboard(target=target)}
+
+
 @router.post("/cards/{card_id}/save-to-main", response_model=OKResponse)
 def save_card_to_main(card_id: UUID) -> OKResponse:
     return OKResponse(ok=tools.save_card_to_dashboard(card_id))

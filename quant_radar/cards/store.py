@@ -70,6 +70,13 @@ def main_list() -> list[Card]:
     return [Card.model_validate_json(spec) for (spec,) in rows]
 
 
+def main_clear() -> int:
+    """Delete every card from main. Returns the number removed."""
+    with _connect() as conn:
+        cur = conn.execute("DELETE FROM cards")
+        return cur.rowcount
+
+
 def main_get(card_id: UUID | str) -> Card | None:
     with _connect() as conn:
         row = conn.execute(
@@ -122,6 +129,18 @@ def working_remove(card_id: UUID | str) -> bool:
     return True
 
 
+def working_clear() -> int:
+    """Delete every card from working. Returns the number removed.
+
+    Leaves the working session OPEN (working.json still exists, just
+    empty) — use working_close() to end the session entirely.
+    """
+    cards = _working_read()
+    n = len(cards)
+    _working_write([])
+    return n
+
+
 def working_list() -> list[Card]:
     return _working_read()
 
@@ -160,6 +179,11 @@ def save(card: Card, target: Target) -> Card:
 
 def remove(card_id: UUID | str, target: Target) -> bool:
     return main_remove(card_id) if target == "main" else working_remove(card_id)
+
+
+def clear(target: Target) -> int:
+    """Remove every card from ``target``. Returns the number removed."""
+    return main_clear() if target == "main" else working_clear()
 
 
 def list_cards(target: Target) -> list[Card]:
