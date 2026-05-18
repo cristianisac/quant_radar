@@ -106,32 +106,51 @@ def check_source_fetch_and_schema() -> None:
 
 
 def check_tool_compatibility() -> None:
-    print("\n=== 3. tools_for_ref returns expected tools per source ===")
-    cases = [
-        (DataRef(source="yfinance", kind="ohlcv", name="AAPL"),
-         {"compute_indicators", "compute_returns", "analyze_moving_averages",
-          "analyze_indicators", "detect_channels", "detect_breakouts",
-          "detect_patterns_vision"}),
-        (DataRef(source="binance", kind="ohlcv", name="BTCUSDT"),
-         {"compute_indicators", "compute_returns", "analyze_moving_averages",
-          "analyze_indicators", "detect_channels", "detect_breakouts",
-          "detect_patterns_vision"}),
-    ]
-    for ref, expected in cases:
+    """Analytical tools are column-agnostic now — they auto-pick the price
+    column (close → value → only-numeric). ``tools_for_ref`` returns the
+    full analytical tool set regardless of source. The agent decides
+    what makes sense; we don't gate.
+    """
+    print("\n=== 3. Analytical tools are column-agnostic ===")
+    full_set = set(tools.all_analytical_tools())
+    for ref in (
+        DataRef(source="yfinance", kind="ohlcv", name="AAPL"),
+        DataRef(source="binance", kind="ohlcv", name="BTCUSDT"),
+        DataRef(source="fred", kind="macro", name="DGS10"),
+    ):
         actual = set(tools.tools_for_ref(ref))
-        missing = expected - actual
         record(
-            f"tools_for_ref({ref.source}/{ref.kind}) covers expected tools",
-            not missing,
-            f"missing={missing}" if missing else f"got {len(actual)} tools",
+            f"tools_for_ref({ref.source}/{ref.kind}) returns full tool set",
+            actual == full_set,
+            f"got {len(actual)} tools",
         )
-    fred_ref = DataRef(source="fred", kind="macro", name="DGS10")
-    fred_tools = set(tools.tools_for_ref(fred_ref))
-    record(
-        "tools_for_ref(fred/macro) correctly returns no close-requiring tools",
-        not (fred_tools & {"compute_indicators", "detect_channels"}),
-        f"fred-compat tools: {fred_tools}",
-    )
+
+    # Live cross-source proof: same tools run on OHLCV + macro frames.
+    btc = hydrate(DataRef(source="binance", kind="ohlcv", name="BTCUSDT", interval="1d"))
+    dgs = hydrate(DataRef(source="fred", kind="macro", name="DGS10"))
+    try:
+        rets_btc = tools.compute_returns(btc)
+        rets_dgs = tools.compute_returns(dgs)
+        record(
+            "compute_returns works on OHLCV (close) AND macro (value) without hint",
+            isinstance(rets_btc, dict) and isinstance(rets_dgs, dict)
+            and any(v is not None for v in rets_btc.values())
+            and any(v is not None for v in rets_dgs.values()),
+            f"btc keys={list(rets_btc)[:3]}, dgs keys={list(rets_dgs)[:3]}",
+        )
+    except Exception as e:
+        record("column-agnostic compute_returns", False, f"{type(e).__name__}: {e}")
+
+    try:
+        z_btc = tools.rolling_zscore(btc, window=30)
+        z_dgs = tools.rolling_zscore(dgs, window=30)
+        record(
+            "rolling_zscore auto-picks close on OHLCV, value on FRED",
+            "zscore_30" in z_btc.columns and "zscore_30" in z_dgs.columns,
+            "",
+        )
+    except Exception as e:
+        record("column-agnostic rolling_zscore", False, f"{type(e).__name__}: {e}")
 
 
 def check_tools_on_real_data() -> None:
@@ -261,6 +280,72 @@ def check_rolling_zscore() -> None:
         )
     except Exception as e:
         record("rolling_zscore on macro", False, f"{type(e).__name__}: {e}")
+
+
+def check_per_source_contract_sweep() -> None:
+    """Iterate every registered Source and verify the ABC contract holds
+    end-to-end: fetch + schema match + search + describe + list_all.
+
+    Generic — any new source added via scaffold_source.py is automatically
+    covered. No per-source hand-coded expectations.
+    """
+    print("\n=== 8a. Per-source ABC contract sweep ===")
+    for src in all_sources():
+        cap = src.capability
+        if cap.status in {"deferred", "paid-only"} or not cap.examples:
+            continue
+        example = cap.examples[0]
+        kind = cap.kinds[0]
+        ref = DataRef(source=src.name, kind=kind, name=example, interval="1d")
+
+        # fetch + schema match
+        try:
+            df = src.fetch(ref)
+            declared = set(cap.schema.get(kind, []))
+            actual = set(df.columns)
+            ok = declared.issubset(actual) and len(df) > 0
+            record(
+                f"{src.name}/{kind} {example}: fetch + schema",
+                ok,
+                f"rows={len(df)}, declared⊆actual={declared.issubset(actual)}",
+            )
+        except Exception as e:
+            record(f"{src.name}: fetch", False, f"{type(e).__name__}: {e}")
+
+        # search returns something OR is documented unsupported
+        try:
+            hits = src.search(example, limit=3)
+            # We don't require non-empty (some upstreams have flaky search),
+            # but it must not raise.
+            record(
+                f"{src.name}: search() callable",
+                isinstance(hits, list),
+                f"got {len(hits)} hits",
+            )
+        except Exception as e:
+            record(f"{src.name}: search", False, f"{type(e).__name__}: {e}")
+
+        # describe returns dict or None (must not raise)
+        try:
+            meta = src.describe(example)
+            record(
+                f"{src.name}: describe() callable",
+                meta is None or isinstance(meta, dict),
+                f"longname={meta.get('longname') if meta else None!r}",
+            )
+        except Exception as e:
+            record(f"{src.name}: describe", False, f"{type(e).__name__}: {e}")
+
+        # list_all returns list (may be empty for unbounded sources)
+        try:
+            listed = src.list_all(limit=5)
+            record(
+                f"{src.name}: list_all() callable",
+                isinstance(listed, list),
+                f"sample size={len(listed)}",
+            )
+        except Exception as e:
+            record(f"{src.name}: list_all", False, f"{type(e).__name__}: {e}")
 
 
 def check_discovery_per_source() -> None:
@@ -406,6 +491,7 @@ def main() -> int:
         check_date_filtering,
         check_fred_title,
         check_rolling_zscore,
+        check_per_source_contract_sweep,
         check_discovery_per_source,
         check_pattern_detection,
     ):

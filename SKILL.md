@@ -123,11 +123,12 @@ python scripts/scaffold_source.py <name>
 ```
 That generates the stub adapter + catalog entry stub with TODO markers. Then fill them in and run `python scripts/integration_audit.py` — the audit fails if any contract method is missing.
 
-**Time-series sources MUST satisfy the `Source` ABC** (4 methods + catalog `schema`):
+**Time-series sources MUST satisfy the `Source` ABC** (4 required + 1 optional method, plus catalog `schema`):
 - `supports(ref)` — gate dispatch
 - `fetch(ref, refresh)` — return a `DataFrame` with `DatetimeIndex` named `timestamp` and columns matching the declared schema
 - `search(query, limit)` — find candidates by keyword (return `[]` if genuinely unsupported)
 - `describe(name)` — per-symbol long-form metadata (return `None` if unsupported)
+- `list_all(limit)` — enumerate every symbol/series this source offers. Default returns `[]`. Only override for sources with bounded catalogs (Binance ~2k spot pairs). For FRED's ~800k series and yfinance's open universe, callers reach for `search(query)` instead.
 
 **News sources have a different contract.** They return `list[dict]` of articles, not time-series, so they don't conform to the `Source` ABC. They live in the catalog (so the agent knows they exist) but use their own functions (`fetch_news`, `fetch_top_headlines`). If you add a new news source, follow the same waterfall but skip the ABC and write `fetch_<name>_news(query, ...) -> list[dict]`.
 
@@ -216,8 +217,12 @@ Analytics (importable as `from quant_radar import tools`):
 | `tools.compute_returns(df, periods=("1d","1w","1m","1y","yoy","ytd"))` | `dict[str, float \| None]` |
 | `tools.compute_indicators(df, indicators=("sma_50","sma_200","rsi","atr","macd"))` | enriched DataFrame |
 | `tools.analyze_moving_averages(df, fast_period=50, slow_period=200, asset="X")` | dict with above/below 50d/200d, 50d-vs-200d, catching-up-from-below, golden/death cross, summary |
-| `tools.analyze_indicators(df)` | `{"rsi_state": "overbought\|oversold\|neutral", "volatility_regime": "high\|elevated\|normal\|low"}` |
-| `tools.rolling_zscore(df, column="close", window=30, min_obs=30)` | enriched DataFrame with a `zscore_{window}` column. Trailing-window (x - mean) / std. `min_obs` defaults to 30 so the first few weeks are NaN, preventing spurious z-scores from thin samples. Pass `column="value"` for FRED macro series. |
+| `tools.analyze_indicators(df)` | `{"rsi_state": ..., "volatility_regime": ... or None}`. `volatility_regime` is `None` on non-OHLCV frames (no ATR possible). |
+| `tools.rolling_zscore(df, column=None, window=30, min_obs=30)` | enriched DataFrame with a `zscore_{window}` column. Trailing-window (x - mean) / std. `min_obs` defaults to 30 to guard against thin samples. |
+
+**Analytical tools are column-agnostic.** All of them auto-pick a price column with priority `close` → `value` → only-numeric. So `tools.rolling_zscore(fred_dgs10_df)`, `tools.compute_indicators(fred_dgs10_df, which=("rsi",))`, `tools.detect_channels(fred_dgs10_df)` all work out of the box on FRED macro frames without specifying `column=`. Pass `price_col=` / `column=` only when you want to override the auto-pick. Multi-column indicators that genuinely need OHLC (ATR) are silently skipped on non-OHLCV frames rather than erroring.
+
+Don't gate by source — the user is reasonable and knows what they're asking for. If they want RSI on a yield series, compute it.
 
 Cards (Phase 3 — `from quant_radar import tools`):
 | Tool | Purpose |

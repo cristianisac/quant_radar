@@ -383,5 +383,9 @@ class _BinanceSource(Source):
     def describe(self, name: str) -> dict | None:
         return describe_pair(name)
 
+    def list_all(self, *, limit: int | None = None) -> list[dict]:
+        pairs = list_pairs()
+        return pairs[:limit] if limit else pairs
+
 
 register_source(_BinanceSource())

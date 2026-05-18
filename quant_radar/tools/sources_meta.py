@@ -124,6 +124,21 @@ def describe_symbol(source: str, name: str) -> dict[str, Any] | None:
     return src.describe(name)
 
 
+def list_all_symbols(
+    source: str, *, limit: int | None = None
+) -> list[dict[str, Any]]:
+    """Enumerate every symbol/series ``source`` offers.
+
+    Only practical for sources with bounded catalogs (currently Binance).
+    Returns ``[]`` for sources with unbounded catalogs (FRED, yfinance)
+    — use ``search_source(source, query)`` for those instead.
+    """
+    src = get_source(source)
+    if src is None:
+        return []
+    return src.list_all(limit=limit)
+
+
 def list_searchable_sources() -> list[dict[str, Any]]:
     """Quick sanity probe — which sources currently support search?
 

@@ -151,9 +151,11 @@ def test_tools_detect_channels_wraps_close_column():
     assert out["confidence"] >= 0.6
 
 
-def test_tools_detect_channels_missing_close_raises():
-    with pytest.raises(ValueError):
-        tools.detect_channels(pd.DataFrame({"open": [1.0]}))
+def test_tools_detect_channels_ambiguous_columns_raises():
+    """Column-agnostic: no close, no value, multiple numeric → must raise."""
+    df = pd.DataFrame({"a": [1.0, 2.0], "b": [3.0, 4.0]})
+    with pytest.raises(ValueError, match="could not infer price column"):
+        tools.detect_channels(df)
 
 
 def test_tools_detect_breakouts_runs_channel_for_you():

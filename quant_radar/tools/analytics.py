@@ -1,8 +1,15 @@
 """Agent-facing analytics tools.
 
-These functions are the public API the chat agent calls. They accept a
-DataFrame (OHLCV from a source adapter) plus simple kwargs, validate
-their inputs, and return either an enriched DataFrame or a dict.
+Design principle: tools are **column-agnostic**. They operate on whatever
+price column the frame exposes — ``close`` for OHLCV, ``value`` for FRED
+macro, or any explicitly named column. The agent decides what makes
+sense; we don't gate by source. If the user asks for RSI on a treasury
+yield, we compute it (RSI on a yield can be informative — the user is
+allowed to ask).
+
+For tools that genuinely need multiple OHLCV columns (e.g. ATR needs
+high+low+close), we silently skip the offending indicator and continue
+rather than aborting the whole call.
 """
 
 from __future__ import annotations
@@ -16,81 +23,121 @@ from quant_radar.analytics.ma import analyze_moving_averages as _analyze_ma
 from quant_radar.analytics.regime import classify_rsi, classify_volatility
 from quant_radar.analytics.returns import DEFAULT_PERIODS
 from quant_radar.analytics.returns import compute_returns as _compute_returns
-from quant_radar.tools.compat import requires_columns
 
-_INDICATOR_SPECS = {
-    "sma_50": lambda df: indicators.sma(df["close"], 50),
-    "sma_200": lambda df: indicators.sma(df["close"], 200),
-    "ema_12": lambda df: indicators.ema(df["close"], 12),
-    "ema_26": lambda df: indicators.ema(df["close"], 26),
-    "rsi": lambda df: indicators.rsi(df["close"], 14),
-    "rsi_14": lambda df: indicators.rsi(df["close"], 14),
-    "atr": lambda df: indicators.atr(df["high"], df["low"], df["close"], 14),
-    "atr_14": lambda df: indicators.atr(df["high"], df["low"], df["close"], 14),
-}
-
-DEFAULT_INDICATORS: tuple[str, ...] = (
-    "sma_50",
-    "sma_200",
-    "rsi",
-    "atr",
-    "macd",
-)
+# Priority order when no column is explicitly named: ``close`` (OHLCV
+# convention), then ``value`` (FRED/macro convention), then the only
+# numeric column if there's exactly one. Anything else and we raise.
+_PRICE_COL_FALLBACKS = ("close", "value")
 
 
-@requires_columns("close")
+def _pick_price_column(df: pd.DataFrame, hint: str | None = None) -> str:
+    """Resolve which column to treat as the price series.
+
+    Used so the same tool works on yfinance OHLCV (``close``), FRED
+    (``value``), or any single-column time series without the caller
+    having to know the upstream's column convention.
+    """
+    if hint is not None:
+        if hint in df.columns:
+            return hint
+        raise ValueError(
+            f"requested column {hint!r} not in DataFrame (have: {list(df.columns)})"
+        )
+    for candidate in _PRICE_COL_FALLBACKS:
+        if candidate in df.columns:
+            return candidate
+    numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
+    if len(numeric_cols) == 1:
+        return numeric_cols[0]
+    raise ValueError(
+        f"could not infer price column (have: {list(df.columns)}). "
+        f"pass `price_col=` or `column=` explicitly."
+    )
+
+
 def compute_returns(
     df: pd.DataFrame,
     *,
-    price_col: str = "close",
+    price_col: str | None = None,
     periods: tuple[str, ...] | list[str] = DEFAULT_PERIODS,
 ) -> dict[str, float | None]:
-    """Period-over-period returns from a price DataFrame."""
-    if price_col not in df.columns:
-        raise ValueError(f"price column '{price_col}' not in DataFrame")
-    return _compute_returns(cast(pd.Series, df[price_col]), periods=periods)
+    """Period-over-period returns. Works on any single price column.
+
+    ``price_col`` defaults to auto-detect (close → value → only numeric).
+    """
+    col = _pick_price_column(df, hint=price_col)
+    return _compute_returns(cast(pd.Series, df[col]), periods=periods)
 
 
-@requires_columns("close")
 def compute_indicators(
     df: pd.DataFrame,
     *,
-    indicators: tuple[str, ...] | list[str] = DEFAULT_INDICATORS,
+    which: tuple[str, ...] | list[str] = ("sma_50", "sma_200", "rsi", "atr", "macd"),
+    price_col: str | None = None,
+    # Back-compat alias: callers that previously passed `indicators=` keep working.
+    indicators: tuple[str, ...] | list[str] | None = None,
 ) -> pd.DataFrame:
-    """Return ``df`` with the requested indicator columns appended."""
-    if "close" not in df.columns:
-        raise ValueError("DataFrame must contain a 'close' column")
+    """Append the requested indicator columns. Column-agnostic.
+
+    Indicators that need OHLC columns (ATR needs high+low+close) are
+    silently skipped if the required columns are absent — useful when
+    the user asks for indicators on a non-OHLCV series like FRED macro.
+
+    Accepts both ``which=`` and ``indicators=`` for the indicator list
+    (the latter is the legacy name kept for back-compat).
+    """
+    from quant_radar.analytics.indicators import (
+        atr as _atr,
+        ema as _ema,
+        macd as _macd,
+        rsi as _rsi,
+        sma as _sma,
+    )
+
+    requested = indicators if indicators is not None else which
+    col = _pick_price_column(df, hint=price_col)
+    price = cast(pd.Series, df[col])
     out = df.copy()
-    for name in indicators:
+    for name in requested:
         if name == "macd":
-            macd_df = _macd_columns(df)
-            out = out.join(macd_df, how="left")
-            continue
-        if name not in _INDICATOR_SPECS:
+            out = out.join(_macd(price), how="left")
+        elif name == "sma_50":
+            out[name] = _sma(price, 50)
+        elif name == "sma_200":
+            out[name] = _sma(price, 200)
+        elif name == "ema_12":
+            out[name] = _ema(price, 12)
+        elif name == "ema_26":
+            out[name] = _ema(price, 26)
+        elif name in ("rsi", "rsi_14"):
+            out[name] = _rsi(price, 14)
+        elif name in ("atr", "atr_14"):
+            # ATR is the only multi-column indicator we expose. Skip
+            # silently when OHLC isn't there rather than aborting the call.
+            if {"high", "low", "close"}.issubset(df.columns):
+                out[name] = _atr(
+                    cast(pd.Series, df["high"]),
+                    cast(pd.Series, df["low"]),
+                    cast(pd.Series, df["close"]),
+                    14,
+                )
+        else:
             raise ValueError(f"unknown indicator: {name}")
-        out[name] = _INDICATOR_SPECS[name](df)
     return out
 
 
-def _macd_columns(df: pd.DataFrame) -> pd.DataFrame:
-    from quant_radar.analytics.indicators import macd
-
-    return macd(cast(pd.Series, df["close"]))
-
-
-@requires_columns("close")
 def analyze_moving_averages(
     df: pd.DataFrame,
     *,
-    price_col: str = "close",
+    price_col: str | None = None,
     fast_period: int = 50,
     slow_period: int = 200,
     asset: str | None = None,
 ) -> dict:
-    if price_col not in df.columns:
-        raise ValueError(f"price column '{price_col}' not in DataFrame")
+    """MA crossover state. Column-agnostic."""
+    col = _pick_price_column(df, hint=price_col)
     return _analyze_ma(
-        cast(pd.Series, df[price_col]),
+        cast(pd.Series, df[col]),
         fast_period=fast_period,
         slow_period=slow_period,
         asset=asset,
@@ -100,35 +147,41 @@ def analyze_moving_averages(
 def rolling_zscore(
     df: pd.DataFrame,
     *,
-    column: str = "close",
+    column: str | None = None,
     window: int = 30,
     min_obs: int = 30,
 ) -> pd.DataFrame:
-    """Append a ``zscore_{window}`` column with rolling z-score of ``column``.
+    """Append a ``zscore_{window}`` column with rolling z-score.
 
-    Works on any frame that has the named column (yfinance OHLCV defaults
-    to ``close``; for FRED macro pass ``column='value'``). ``min_obs`` is
-    the standard 30-observation guard — z-scores from <30 points are too
-    noisy to act on. Pass a smaller value to override.
-
-    Examples:
-        >>> rolling_zscore(yf_btc_df)                # 30d zscore of close
-        >>> rolling_zscore(fred_dgs10_df, column='value', window=90)
+    ``column`` defaults to auto-detect (close → value → only numeric).
+    ``min_obs`` is the standard 30-observation guard against thin samples.
     """
-    if column not in df.columns:
-        raise ValueError(f"column '{column}' not in DataFrame (have: {list(df.columns)})")
+    col = _pick_price_column(df, hint=column)
     out = df.copy()
     out[f"zscore_{window}"] = indicators.rolling_zscore(
-        cast(pd.Series, df[column]), window=window, min_obs=min_obs
+        cast(pd.Series, df[col]), window=window, min_obs=min_obs
     )
     return out
 
 
-@requires_columns("close", "high", "low")
-def analyze_indicators(df: pd.DataFrame) -> dict[str, str]:
-    """Return state labels for RSI and volatility based on the last bar."""
-    enriched = compute_indicators(df, indicators=("rsi", "atr"))
-    return {
-        "rsi_state": classify_rsi(cast(pd.Series, enriched["rsi"])),
-        "volatility_regime": classify_volatility(cast(pd.Series, enriched["atr"])),
-    }
+def analyze_indicators(
+    df: pd.DataFrame, *, price_col: str | None = None,
+) -> dict[str, str | None]:
+    """Return state labels for RSI and (when OHLC is available) volatility.
+
+    ``volatility_regime`` is ``None`` on non-OHLCV frames (no ATR possible).
+    """
+    col = _pick_price_column(df, hint=price_col)
+    rsi_series = indicators.rsi(cast(pd.Series, df[col]), 14)
+    out: dict[str, str | None] = {"rsi_state": classify_rsi(rsi_series)}
+    if {"high", "low", "close"}.issubset(df.columns):
+        atr_series = indicators.atr(
+            cast(pd.Series, df["high"]),
+            cast(pd.Series, df["low"]),
+            cast(pd.Series, df["close"]),
+            14,
+        )
+        out["volatility_regime"] = classify_volatility(atr_series)
+    else:
+        out["volatility_regime"] = None
+    return out
