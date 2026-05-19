@@ -56,10 +56,19 @@ export function ChartCard({ card, height: forcedHeight, enlarged = false }: Prop
   const elRef = useRef<HTMLDivElement>(null);
   const isLoading = loading0 || loading1;
 
+  // Compact = card view. Drop subplots and tighten margins so the price
+  // chart actually fills the small card. Enlarged view gets everything.
+  const compact = !enlarged;
+
   const figure = useMemo(
-    () => buildFigure([data0 ?? null, data1 ?? null], card),
-    [data0, data1, card],
+    () => buildFigure([data0 ?? null, data1 ?? null], card, { compact }),
+    [data0, data1, card, compact],
   );
+
+  // At-a-glance stat strip: latest close + 1d/5d/30d/90d % change,
+  // colour-coded. Lets the user see "is this card flashing red or
+  // green right now?" without enlarging.
+  const stats = useMemo(() => computeQuickStats(data0 ?? null), [data0]);
 
   // Call Plotly directly. react-plotly.js's auto-init failed silently
   // inside react-grid-layout cells; controlling the lifecycle here
@@ -109,10 +118,31 @@ export function ChartCard({ card, height: forcedHeight, enlarged = false }: Prop
 
   return (
     <div className="border border-border rounded-lg bg-panel p-3 h-full overflow-hidden flex flex-col">
-      <div className="flex justify-between items-baseline mb-2 shrink-0">
+      <div className="flex justify-between items-baseline mb-1 shrink-0">
         <h3 className="font-semibold">{card.title}</h3>
         <span className="text-xs text-muted">{badge}</span>
       </div>
+      {stats && (
+        <div className="flex items-baseline gap-3 mb-1 text-xs shrink-0">
+          <span className="font-mono font-semibold text-sm text-text">
+            {formatValue(stats.last)}
+          </span>
+          {(["1d", "5d", "30d", "90d"] as const).map((p) =>
+            stats.changes[p] !== null ? (
+              <span
+                key={p}
+                className={
+                  stats.changes[p]! >= 0 ? "text-green-400" : "text-red-400"
+                }
+              >
+                {stats.changes[p]! >= 0 ? "▲" : "▼"}{" "}
+                {Math.abs(stats.changes[p]! * 100).toFixed(2)}%{" "}
+                <span className="text-muted">{p}</span>
+              </span>
+            ) : null,
+          )}
+        </div>
+      )}
       <div
         className="qr-chart-host flex-1 min-h-0 relative"
         style={wrapperStyle}
@@ -132,6 +162,7 @@ export function ChartCard({ card, height: forcedHeight, enlarged = false }: Prop
 function buildFigure(
   datas: (TimeSeriesResponse | null)[],
   card: Card,
+  opts: { compact?: boolean } = {},
 ): { traces: object[]; layout: object } | null {
   const data = datas[0];
   if (!data || data.timestamps.length === 0) return null;
@@ -141,9 +172,12 @@ function buildFigure(
   const isOhlcv = ["open", "high", "low", "close"].every((k) => k in cols);
   const spec = card.chart_spec;
 
-  const subplots = (spec?.subplots ?? []).filter((s) =>
-    isSupportedSubplot(s, cols),
-  );
+  // Compact = card view: skip subplots, hide legend (we have the stat
+  // strip + title), tighter margins. Enlarged keeps everything.
+  const compact = !!opts.compact;
+  const subplots = compact
+    ? []
+    : (spec?.subplots ?? []).filter((s) => isSupportedSubplot(s, cols));
   const nRows = 1 + subplots.length;
   const traces: object[] = [];
 
@@ -239,10 +273,13 @@ function buildFigure(
     autosize: true,
     paper_bgcolor: "rgba(0,0,0,0)",
     plot_bgcolor: "rgba(0,0,0,0)",
-    font: { color: "#fafafa", size: 11 },
-    // Top margin holds the legend so it doesn't sit on the price panel.
-    margin: { l: 50, r: 20, t: 28, b: 40 },
-    showlegend: true,
+    font: { color: "#fafafa", size: compact ? 9 : 11 },
+    // Compact: tight margins, no legend (the JSX stat strip carries
+    // the trace name visually). Enlarged: room for Plotly's legend.
+    margin: compact
+      ? { l: 40, r: 8, t: 4, b: 22 }
+      : { l: 50, r: 20, t: 28, b: 40 },
+    showlegend: !compact,
     legend: {
       orientation: "h",
       yanchor: "bottom", y: 1.02,
@@ -358,4 +395,59 @@ function addAnnotationToFigure(
       fillcolor: "rgba(255,255,255,0.05)",
     });
   }
+}
+
+// --- At-a-glance stats for the card-view header strip ---
+//
+// Returns latest close + percent-change over the last 1d / 5d / 30d /
+// 90d so the user can see "is this card flashing red or green now?"
+// without enlarging. Uses bar-count windows (1 daily bar = 1d) which
+// approximates trading days but is close enough for a status indicator.
+
+type Period = "1d" | "5d" | "30d" | "90d";
+
+interface QuickStats {
+  last: number;
+  changes: Record<Period, number | null>;
+}
+
+const PERIOD_BARS: Record<Period, number> = {
+  "1d": 1,
+  "5d": 5,
+  "30d": 30,
+  "90d": 90,
+};
+
+function computeQuickStats(data: TimeSeriesResponse | null): QuickStats | null {
+  if (!data || data.timestamps.length === 0) return null;
+  const cols = data.columns;
+  const series = cols.close ?? cols.value ?? null;
+  if (!series || series.length === 0) return null;
+  // Pull the last finite value as "now".
+  let lastIdx = series.length - 1;
+  while (lastIdx >= 0 && !Number.isFinite(series[lastIdx])) lastIdx -= 1;
+  if (lastIdx < 0) return null;
+  const last = series[lastIdx];
+  const changes: Record<Period, number | null> = {
+    "1d": null, "5d": null, "30d": null, "90d": null,
+  };
+  for (const [p, bars] of Object.entries(PERIOD_BARS) as [Period, number][]) {
+    const refIdx = lastIdx - bars;
+    if (refIdx < 0) continue;
+    const ref = series[refIdx];
+    if (!Number.isFinite(ref) || ref === 0) continue;
+    changes[p] = (last - ref) / ref;
+  }
+  return { last, changes };
+}
+
+function formatValue(v: number): string {
+  if (!Number.isFinite(v)) return "—";
+  const abs = Math.abs(v);
+  if (abs >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M`;
+  if (abs >= 10_000) return `${(v / 1_000).toFixed(2)}k`;
+  if (abs >= 100) return v.toFixed(2);
+  if (abs >= 1) return v.toFixed(3);
+  if (abs >= 0.01) return v.toFixed(4);
+  return v.toExponential(2);
 }
