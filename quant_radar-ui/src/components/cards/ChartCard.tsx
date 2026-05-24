@@ -127,7 +127,7 @@ export function ChartCard({ card, height: forcedHeight, enlarged = false }: Prop
           <span className="font-mono font-semibold text-sm text-text">
             {formatValue(stats.last)}
           </span>
-          {(["1d", "5d", "30d", "90d"] as const).map((p) =>
+          {(["1d", "5d", "30d", "90d", "1y"] as const).map((p) =>
             stats.changes[p] !== null ? (
               <span
                 key={p}
@@ -400,23 +400,41 @@ function addAnnotationToFigure(
 // --- At-a-glance stats for the card-view header strip ---
 //
 // Returns latest close + percent-change over the last 1d / 5d / 30d /
-// 90d so the user can see "is this card flashing red or green now?"
-// without enlarging. Uses bar-count windows (1 daily bar = 1d) which
-// approximates trading days but is close enough for a status indicator.
+// 90d / 1y so the user can see "is this card flashing red or green
+// now?" without enlarging. Uses *calendar-day* windows (not bar count)
+// via timestamp lookup, so the labels stay honest across data
+// frequencies — e.g. "1y" on a monthly FRED series correctly picks
+// the bar from 365 days back, not 12 bars (which would be a year)
+// or 252 bars (which would be 21 years).
 
-type Period = "1d" | "5d" | "30d" | "90d";
+type Period = "1d" | "5d" | "30d" | "90d" | "1y";
 
 interface QuickStats {
   last: number;
   changes: Record<Period, number | null>;
 }
 
-const PERIOD_BARS: Record<Period, number> = {
+const PERIOD_DAYS: Record<Period, number> = {
   "1d": 1,
   "5d": 5,
   "30d": 30,
   "90d": 90,
+  "1y": 365,
 };
+
+const DAY_MS = 86_400_000;
+
+function indexNDaysBack(
+  timestamps: string[], lastIdx: number, days: number,
+): number {
+  const target = new Date(timestamps[lastIdx]).getTime() - days * DAY_MS;
+  // Linear scan backwards; data is monotonic-by-timestamp by contract,
+  // and series are at most ~16k points (FRED DGS10 daily since 1962).
+  for (let i = lastIdx - 1; i >= 0; i -= 1) {
+    if (new Date(timestamps[i]).getTime() <= target) return i;
+  }
+  return -1;
+}
 
 function computeQuickStats(data: TimeSeriesResponse | null): QuickStats | null {
   if (!data || data.timestamps.length === 0) return null;
@@ -429,10 +447,10 @@ function computeQuickStats(data: TimeSeriesResponse | null): QuickStats | null {
   if (lastIdx < 0) return null;
   const last = series[lastIdx];
   const changes: Record<Period, number | null> = {
-    "1d": null, "5d": null, "30d": null, "90d": null,
+    "1d": null, "5d": null, "30d": null, "90d": null, "1y": null,
   };
-  for (const [p, bars] of Object.entries(PERIOD_BARS) as [Period, number][]) {
-    const refIdx = lastIdx - bars;
+  for (const [p, days] of Object.entries(PERIOD_DAYS) as [Period, number][]) {
+    const refIdx = indexNDaysBack(data.timestamps, lastIdx, days);
     if (refIdx < 0) continue;
     const ref = series[refIdx];
     if (!Number.isFinite(ref) || ref === 0) continue;
