@@ -3,6 +3,8 @@ from quant_radar.sources import (
     finnhub_src,
     fred_src,
     gdelt_src,
+    openbb_src,
+    polygon_src,
     yfinance_src,
 )
 
@@ -11,5 +13,7 @@ __all__ = [
     "finnhub_src",
     "fred_src",
     "gdelt_src",
+    "openbb_src",
+    "polygon_src",
     "yfinance_src",
 ]

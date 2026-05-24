@@ -27,18 +27,28 @@ def isolated_cache(tmp_path, monkeypatch):
 # --------------- catalog coverage ---------------
 
 
-def test_catalog_lists_every_source_in_sources_package():
-    """If we add a source module, we must add its catalog entry."""
-    from quant_radar import sources
+def test_catalog_lists_every_registered_source():
+    """Every Source ABC registration must have a matching catalog entry.
 
-    code_sources = {
-        name[: -len("_src")] for name in sources.__all__ if name.endswith("_src")
-    }
+    Originally checked module-name → catalog-name, but `openbb_src.py`
+    legitimately registers multiple Sources (fmp + tiingo + future
+    OpenBB providers). Source-of-truth is now the registry.
+    """
+    from quant_radar.sources import hydrate  # noqa: F401 (triggers registration)
+    from quant_radar.sources.base_source import all_sources
+
+    NEWS_ONLY = {"gdelt", "finnhub"}  # outside the Source ABC by design
+    registered = {s.name for s in all_sources()}
     catalog_sources = set(catalog.CATALOG.keys())
-    missing = code_sources - catalog_sources
-    extras = catalog_sources - code_sources
-    assert not missing, f"sources missing catalog entry: {sorted(missing)}"
-    assert not extras, f"catalog entries with no source module: {sorted(extras)}"
+
+    missing_in_catalog = registered - catalog_sources
+    missing_registration = (catalog_sources - registered) - NEWS_ONLY
+    assert not missing_in_catalog, (
+        f"registered Sources missing catalog entry: {sorted(missing_in_catalog)}"
+    )
+    assert not missing_registration, (
+        f"catalog entries with no registered Source: {sorted(missing_registration)}"
+    )
 
 
 _REQUIRED_FIELDS = (

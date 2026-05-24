@@ -22,7 +22,19 @@ install-ide:
 	uv pip install -e ".[dev]"
 
 # Hardening flags applied to every ephemeral container run.
-HARDEN = --read-only --tmpfs /tmp --tmpfs /app/data \
+#
+# `--read-only` was dropped when we added OpenBB Platform: OpenBB's import
+# runs a `_PackageBuilder.auto_build()` that writes generated Python and a
+# .build.lock file into its own install dir. Pre-building at image-build
+# time doesn't help because the lock write happens on every import.
+# Skipping auto-build via OPENBB_AUTO_BUILD=False leaves the high-level
+# `obb.equity.*` API empty — unusable. Dropping --read-only is the
+# pragmatic trade-off; we still get cap-drop + no-new-privileges + tmpfs
+# for known mutable paths, which covers the realistic threat model
+# (untrusted upstream API responses, malicious pip package payloads).
+HARDEN = --tmpfs /tmp --tmpfs /app/data \
+		--tmpfs /home/radar/.openbb_platform:exec,uid=1000,gid=1000 \
+		--tmpfs /home/radar/.cache:exec,uid=1000,gid=1000 \
 		--security-opt no-new-privileges --cap-drop ALL
 
 # Lint/type/test never need the host cache.
@@ -33,8 +45,11 @@ DOCKER_RUN_EPHEMERAL = $(DOCKER) run --rm $(HARDEN) quant-radar:dev
 ENV_FILE_ARG = $(if $(wildcard .env),--env-file .env,)
 
 # Interactive sessions bind-mount ./data so cached parquet survives.
+# (See HARDEN comment for why --read-only is no longer here.)
 DOCKER_RUN_PERSISTENT = $(DOCKER) run --rm -it \
-		--read-only --tmpfs /tmp \
+		--tmpfs /tmp \
+		--tmpfs /home/radar/.openbb_platform:exec,uid=1000,gid=1000 \
+		--tmpfs /home/radar/.cache:exec,uid=1000,gid=1000 \
 		--security-opt no-new-privileges --cap-drop ALL \
 		$(ENV_FILE_ARG) \
 		-v "$(PWD)/data:/app/data"

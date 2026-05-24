@@ -45,6 +45,13 @@ COPY --from=ui-build --chown=radar:radar /ui/dist ./quant_radar/server/ui_dist
 
 RUN pip install --user -e ".[dev]"
 
+# Pre-build OpenBB's static accessor classes at image build time. OpenBB's
+# first import runs an auto-build that writes generated Python into its
+# install dir; doing it now means the container can stay --read-only at
+# runtime without OpenBB needing to write to its own package directory.
+# HOME points at /tmp during the build so prefs land somewhere writable.
+RUN HOME=/tmp python -c "from openbb import obb; print('openbb built:', obb.system.system_settings.version)" 2>&1 | tail -3
+
 COPY --chown=radar:radar tests/ ./tests/
 COPY --chown=radar:radar scripts/ ./scripts/
 
