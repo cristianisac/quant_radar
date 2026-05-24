@@ -110,12 +110,24 @@ This is the realized "step 2" in the new-source waterfall (existing lib → Open
 
 ### Adding a new source — the waterfall
 
-Don't write a 100-line adapter when an existing tool already covers it. Check each step in order and stop at the first match:
+Don't write a 100-line adapter when an existing tool already covers it. The order below is "cheapest path that gets the job done". Stop at the first match. Note the order depends on what you need:
 
-1. **Existing Python lib?** (`yfinance`, `fredapi`, `python-binance`, `polygon-api-client`, `alpha-vantage`, ...) → your `fetch()` is a thin wrapper around the lib. ~30 LOC.
-2. **OpenBB Platform provider?** `openbb-platform` ships ~100 vetted providers (Polygon, Tiingo, FMP, Intrinio, ...). If yes, `fetch()` calls `obb.<provider>.<command>(...)`. ~30 LOC. (`pip install openbb` if needed.)
-3. **Official MCP server?** Check [modelcontextprotocol.io/servers](https://modelcontextprotocol.io/servers) and the vendor's docs. If yes, federate via `claude mcp add` at the user level — the agent talks MCP directly, no adapter needed.
-4. **Otherwise, hand-write a ~100-LOC adapter.** Read the API docs (LLM-assisted is normal — paste docs + the ABC contract, ask Claude to draft).
+**If the user wants an ad-hoc one-shot answer (no card needed):**
+
+1. **MCP** — we have `openbb-mcp-server` installed at user scope. The agent calls `mcp__openbb__*` tools directly. **Zero new code per source.** Covers all ~100 OpenBB-Platform providers (FMP, Tiingo, Polygon, Intrinio, SEC EDGAR, IMF, OECD, ...). Pick this for ad-hoc queries.
+2. **Vendor-official MCP** — check [modelcontextprotocol.io/servers](https://modelcontextprotocol.io/servers). Some vendors ship their own MCP (Stripe, Linear, Sentry, Datadog). If it exists, federate via `claude mcp add` — no adapter, no Python install.
+3. **Raw HTTP** — like we did for CFTC. Works inside Docker with `--env-file .env`. Acceptable for genuine one-offs; not a recurring pattern.
+
+**If the user wants card integration / recurring use (the Source ABC matters):**
+
+1. **OpenBB Platform provider?** `pip install openbb-<provider>` (or full `openbb` for many at once), then write a ~20-LOC `_OpenBBSource` subclass that wraps `obb.<category>.<command>(provider="...")`. Card-integrated, follows ABC, ~95% of new sources land here.
+2. **Existing dedicated Python lib?** (yfinance, fredapi, python-binance, ...) Only when (a) OpenBB doesn't have the provider, or (b) the lib has features OpenBB's wrapper doesn't expose. Wrap it in a thin adapter, ~30 LOC.
+3. **Hand-written adapter.** Read the API docs (LLM-assisted is normal). ~100 LOC. Last resort.
+
+**Why MCP-first for ad-hoc, OpenBB-first for cards:**
+- MCP has zero marginal cost per source but returns data to the agent ad-hoc — no flow into our `DataRef` → DataFrame → card pipeline.
+- OpenBB Platform installed in our image lets a 20-LOC `_OpenBBSource` subclass feed any provider into the full system (cards, search, describe, refresh, tools_for_ref).
+- Standalone Python libs were preferred when we didn't have OpenBB. Now that the OpenBB MCP is installed at user scope and the Platform is the natural fit for everything financial, they're the fallback, not the default.
 
 Use the scaffold:
 ```
