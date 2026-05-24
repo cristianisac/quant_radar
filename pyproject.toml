@@ -15,6 +15,12 @@ dependencies = [
     "matplotlib>=3.9",
     "fastapi>=0.110",
     "uvicorn[standard]>=0.27",
+    # OpenBB Platform — meta-source for ~100 vetted financial data providers.
+    # Bundled package brings all providers + the high-level obb.* API. Adds
+    # ~311MB to the image. The trade-off vs selective install was that selective
+    # only ships fetcher classes, not the unified obb.equity.price.historical()
+    # surface our adapters delegate to. Worth the size.
+    "openbb>=4.7",
 ]
 
 [project.optional-dependencies]
