@@ -33,6 +33,7 @@ from quant_radar.tools.news import (
 from quant_radar.tools.sentiment import (
     describe_sentiment_routing,
     describe_social_sentiment_routing,
+    fetch_attention_and_polarity,
     fetch_sentiment,
     fetch_social_sentiment,
 )
@@ -90,6 +91,7 @@ __all__ = [
     "save_card_to_dashboard",
     "describe_sentiment_routing",
     "describe_social_sentiment_routing",
+    "fetch_attention_and_polarity",
     "fetch_sentiment",
     "fetch_social_sentiment",
     "score_sentiment",
