@@ -19,6 +19,8 @@ from quant_radar.sources import (
     binance_src,
     catalog,
     fred_src,
+    kind_coverage as _kind_coverage,
+    kind_relationships as _kind_relationships,
     yfinance_src,
 )
 from quant_radar.sources.base_source import all_sources, get_source
@@ -35,6 +37,40 @@ def list_sources() -> list[dict[str, Any]]:
 def describe_source(name: str) -> dict[str, Any] | None:
     """Return one source's full capability, or ``None`` if unknown."""
     return catalog.describe_source(name)
+
+
+def list_kind_relationships() -> list[dict[str, Any]]:
+    """Every cross-kind relationship (e.g. social_sentiment ↔ sentiment).
+
+    Use this at session start to know which kinds the agent should
+    pull together. See ``quant_radar/sources/kind_relationships.py``.
+    """
+    return _kind_relationships.list_relationships()
+
+
+def relationships_for_kind(kind: str) -> list[dict[str, Any]]:
+    """All cross-kind relationships that involve ``kind``.
+
+    When the agent has chosen a primary kind (e.g. ``ohlcv``), this
+    surfaces every other kind that would enrich the read (news,
+    sentiment, social_sentiment, ...).
+    """
+    return _kind_relationships.relationships_for_kind(kind)
+
+
+def describe_kind_coverage(kind: str) -> dict[str, Any] | None:
+    """Cross-source comparison for one ``kind`` (e.g. sentiment).
+
+    Returns the routing record from ``kind_coverage.py``: which sources
+    serve this kind, their tiers, rate limits, signal quality, and the
+    default routing chain. ``None`` when the kind is single-source.
+    """
+    return _kind_coverage.get_coverage(kind)
+
+
+def list_covered_kinds() -> list[str]:
+    """Kinds with multi-source coverage declared in ``kind_coverage.py``."""
+    return _kind_coverage.list_covered_kinds()
 
 
 def _probe_frame(

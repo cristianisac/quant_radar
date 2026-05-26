@@ -144,6 +144,22 @@ chatter yet). Combine them when the user wants the full picture.
 
 When you add a new source for an existing kind, update ``kind_coverage.py`` AND the source's catalog entry. Both must agree on the relationship.
 
+### Cross-kind relationships — which data types pair
+
+Three different views of the data landscape exist; read them at session start to know what to pull:
+
+1. **`catalog.py`** *(per-source)* — "what does Polygon serve?" Use `tools.describe_source(name)`.
+2. **`kind_coverage.py`** *(cross-source for one kind)* — "Alpha Vantage AND Marketaux both serve sentiment, how do they relate?" Use `tools.describe_kind_coverage(kind)`.
+3. **`kind_relationships.py`** *(cross-kind)* — "social_sentiment and sentiment are orthogonal axes; pull both." Use `tools.list_kind_relationships()` or `tools.relationships_for_kind(kind)`.
+
+Relationship types:
+- ``orthogonal``: different axes, neither replaces the other (social_sentiment ↔ sentiment)
+- ``siblings``: distinct frames that compose a fuller picture (income + balance + cash)
+- ``primary_plus_context``: primary signal + context (ohlcv + news, macro + ohlcv)
+- ``alternative_views``: same phenomenon, different lens (algorithmic vs vision patterns)
+
+When the user asks about a ticker, run `tools.relationships_for_kind(kind)` on the primary kind they're after — it tells you which additional cards to create alongside.
+
 ### Adding a new source — the waterfall
 
 Don't write a 100-line adapter when an existing tool already covers it. The order below is "cheapest path that gets the job done". Stop at the first match. Note the order depends on what you need:
