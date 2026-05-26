@@ -65,8 +65,16 @@ _wire_openbb_credentials()
 _CANONICAL = ("open", "high", "low", "close", "volume")
 
 
+# Schema columns kept per kind. Forex omits volume since interbank
+# OHLCV volume is quote-side noise, not real market volume.
+_KEEP_BY_KIND: dict[str, tuple[str, ...]] = {
+    "ohlcv": _CANONICAL,
+    "forex": ("open", "high", "low", "close"),
+}
+
+
 def _fetch_via_openbb(
-    provider: str, symbol: str,
+    provider: str, kind: str, symbol: str,
     start: datetime | None, end: datetime | None, interval: str,
 ) -> pd.DataFrame:
     from openbb import obb
@@ -79,19 +87,25 @@ def _fetch_via_openbb(
     if end is not None:
         kwargs["end_date"] = end.strftime("%Y-%m-%d")
 
-    result = obb.equity.price.historical(**kwargs)  # type: ignore[arg-type]
+    if kind == "ohlcv":
+        result = obb.equity.price.historical(**kwargs)  # type: ignore[arg-type]
+    elif kind == "forex":
+        result = obb.currency.price.historical(**kwargs)  # type: ignore[arg-type]
+    else:
+        raise ValueError(f"unsupported kind for OpenBB adapter: {kind!r}")
+
     df = result.to_df()
     if df.empty:
         return df
     # OpenBB returns the index named "date" with object dtype (string
-    # dates like "2026-05-21"). Normalize to a tz-aware DatetimeIndex
-    # named "timestamp" so the cache layer and downstream tools see the
-    # same shape every other adapter produces.
+    # dates). Normalize to a tz-aware DatetimeIndex named "timestamp"
+    # so the cache layer + downstream tools see the same shape every
+    # other adapter produces.
     df.columns = [str(c).lower() for c in df.columns]
     df.index = pd.to_datetime(df.index, utc=True)
     df.index.name = "timestamp"
-    keep = [c for c in _CANONICAL if c in df.columns]
-    return df[keep]
+    keep = _KEEP_BY_KIND.get(kind, _CANONICAL)
+    return df[[c for c in keep if c in df.columns]]
 
 
 def _search_via_openbb(provider: str, query: str, limit: int) -> list[dict]:
@@ -137,21 +151,29 @@ def _describe_via_openbb(provider: str, symbol: str) -> dict | None:
 
 
 class _OpenBBOHLCVSource(Source):
-    """Parametric base. Concrete subclasses set PROVIDER + capability."""
+    """Parametric base. Concrete subclasses set PROVIDER + capability.
+
+    Supports OHLCV equity historical (``kind="ohlcv"``) and forex
+    historical (``kind="forex"``). Forex uses OpenBB's currency
+    namespace; equity uses equity.price.historical.
+    """
 
     PROVIDER: str = ""  # override in subclass
+    KINDS: tuple[str, ...] = ("ohlcv", "forex")
 
     def supports(self, ref: _DataRef) -> bool:
-        return ref.source == self.PROVIDER and ref.kind == "ohlcv"
+        return ref.source == self.PROVIDER and ref.kind in self.KINDS
 
     def fetch(self, ref: _DataRef, *, refresh: bool = False) -> pd.DataFrame:
         key = CacheKey(
-            source=self.PROVIDER, kind="ohlcv",
+            source=self.PROVIDER, kind=ref.kind,
             name=ref.name, interval=ref.interval,
         )
 
         def fetcher(start, end):
-            return _fetch_via_openbb(self.PROVIDER, ref.name, start, end, ref.interval)
+            return _fetch_via_openbb(
+                self.PROVIDER, ref.kind, ref.name, start, end, ref.interval,
+            )
 
         return get_or_fetch(
             key, fetcher, start=ref.start, end=ref.end,
@@ -159,6 +181,9 @@ class _OpenBBOHLCVSource(Source):
         )
 
     def search(self, query: str, *, limit: int = 20) -> list[dict]:
+        # Search hits equity.search regardless of kind. For forex
+        # discovery, the agent should reach for `list_all` / `examples`
+        # in the catalog — FX universes are bounded and well-known.
         return _search_via_openbb(self.PROVIDER, query, limit)
 
     def describe(self, name: str) -> dict | None:
