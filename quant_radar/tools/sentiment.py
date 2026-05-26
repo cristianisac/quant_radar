@@ -90,3 +90,55 @@ def describe_sentiment_routing() -> dict[str, Any]:
     """
     cov = kind_coverage.get_coverage("sentiment")
     return cov or {}
+
+
+def fetch_social_sentiment(
+    ticker: str, *,
+    start: datetime | None = None,
+    end: datetime | None = None,
+    refresh: bool = False,
+) -> tuple[pd.DataFrame, str]:
+    """Fetch Reddit-mention velocity for ``ticker`` via Apewisdom.
+
+    Returns ``(df, source_used)`` mirroring ``fetch_sentiment``'s shape.
+    The DataFrame is a single-row snapshot of the current 24h window:
+    mentions, mentions_24h_ago, mentions_change_pct, upvotes, rank, plus
+    the filter (``all-stocks`` or ``all-crypto``) the ticker came from.
+
+    Empty DataFrame means the ticker isn't on Apewisdom's current
+    leaderboard — that's a real signal (no chatter), not an error.
+    """
+    cov = kind_coverage.get_coverage("social_sentiment")
+    if cov is None:
+        raise RuntimeError("kind_coverage missing 'social_sentiment' entry")
+
+    chain = cov.get("default_chain", [])
+    if not chain:
+        raise RuntimeError("no providers configured for kind='social_sentiment'")
+
+    last_err: Exception | None = None
+    for src in chain:
+        try:
+            df = hydrate(
+                DataRef(
+                    source=src, kind="social_sentiment",
+                    name=ticker.upper(), interval="snapshot",
+                    start=start, end=end,
+                ),
+                refresh=refresh,
+            )
+            return df, src
+        except Exception as e:  # noqa: BLE001
+            last_err = e
+            continue
+
+    raise RuntimeError(
+        f"All social_sentiment providers in {chain} failed for {ticker}. "
+        f"Last error: {type(last_err).__name__}: {last_err}"
+    )
+
+
+def describe_social_sentiment_routing() -> dict[str, Any]:
+    """Return the multi-source routing record for kind='social_sentiment'."""
+    cov = kind_coverage.get_coverage("social_sentiment")
+    return cov or {}

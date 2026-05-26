@@ -62,3 +62,7 @@ logs/
 .DS_Store
 .idea/
 .vscode/
+
+# Claude Code per-user settings (permissions, etc.)
+.claude/settings.local.json
+.playwright-mcp/
