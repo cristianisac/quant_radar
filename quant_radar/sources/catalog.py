@@ -249,7 +249,7 @@ CATALOG: dict[str, SourceCapability] = {
     ),
     "gdelt": SourceCapability(
         name="gdelt",
-        kinds=["news"],
+        kinds=["news", "news_tone"],
         intervals=["events; query windows from 1 hour up to several years"],
         history=(
             "GDELT 2.0 covers events from early 2015 onward. The DOC API "
@@ -272,7 +272,14 @@ CATALOG: dict[str, SourceCapability] = {
             "For reliable news use finnhub (requires free key)."
         ),
         examples=['Bitcoin', '"AI stocks"', 'Fed AND rates', 'Nvidia earnings'],
-        schema={"news": ["title", "url", "source", "published_at"]},
+        schema={
+            "news": ["title", "url", "source", "published_at"],
+            # `tone` is GDELT's centered article-tone metric, typically
+            # in [-10, +10]. Negative = pessimistic / conflict-framing,
+            # positive = optimistic. Aggregated per timestamp by GDELT's
+            # `mode=timelinetone` (hourly on short windows, daily beyond).
+            "news_tone": ["tone"],
+        },
     ),
     "finnhub": SourceCapability(
         name="finnhub",
