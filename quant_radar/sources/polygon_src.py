@@ -56,15 +56,29 @@ def _interval_path(interval: str) -> tuple[int, str]:
     return mapping[interval]
 
 
+def _ticker_for_kind(kind: str, symbol: str) -> str:
+    """Polygon aggregates use prefixed tickers per asset class.
+
+    - Equities/ETFs: bare ticker (AAPL, SPY)
+    - Forex: ``C:<PAIR>`` (C:EURUSD)
+    - Crypto: ``X:<PAIR>`` (X:BTCUSD)
+    """
+    s = symbol.upper().lstrip("C:").lstrip("X:")
+    if kind == "forex":
+        return f"C:{s}"
+    return s
+
+
 def _fetch(
-    symbol: str, interval: str,
+    symbol: str, interval: str, kind: str,
     start: datetime | None, end: datetime | None,
 ) -> pd.DataFrame:
     end = end or datetime.now(UTC)
     start = start or (end - timedelta(days=_DEFAULT_LOOKBACK_DAYS))
     mult, span = _interval_path(interval)
+    ticker = _ticker_for_kind(kind, symbol)
     url = (
-        f"{_BASE}/v2/aggs/ticker/{symbol.upper()}/range/{mult}/{span}"
+        f"{_BASE}/v2/aggs/ticker/{ticker}/range/{mult}/{span}"
         f"/{start.strftime('%Y-%m-%d')}/{end.strftime('%Y-%m-%d')}"
     )
     resp = requests.get(
@@ -94,14 +108,14 @@ def _fetch(
 
 
 def fetch_ohlcv(
-    symbol: str, *, interval: str = "1d",
+    symbol: str, *, interval: str = "1d", kind: str = "ohlcv",
     start: datetime | None = None, end: datetime | None = None,
     refresh: bool = False,
 ) -> pd.DataFrame:
-    key = CacheKey(source=SOURCE, kind="ohlcv", name=symbol.upper(), interval=interval)
+    key = CacheKey(source=SOURCE, kind=kind, name=symbol.upper(), interval=interval)
 
     def fetcher(start: datetime | None = None, end: datetime | None = None) -> pd.DataFrame:
-        return _fetch(symbol, interval, start, end)
+        return _fetch(symbol, interval, kind, start, end)
 
     return get_or_fetch(
         key, fetcher, start=start, end=end, refresh=refresh,
@@ -168,13 +182,14 @@ def describe_ticker(symbol: str) -> dict | None:
 
 class _PolygonSource(Source):
     capability = CATALOG["polygon"]
+    KINDS = ("ohlcv", "forex")
 
     def supports(self, ref: _DataRef) -> bool:
-        return ref.source == SOURCE and ref.kind == "ohlcv"
+        return ref.source == SOURCE and ref.kind in self.KINDS
 
     def fetch(self, ref: _DataRef, *, refresh: bool = False) -> pd.DataFrame:
         return fetch_ohlcv(
-            ref.name, interval=ref.interval,
+            ref.name, interval=ref.interval, kind=ref.kind,
             start=ref.start, end=ref.end, refresh=refresh,
         )
 

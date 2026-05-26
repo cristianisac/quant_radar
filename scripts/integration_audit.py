@@ -282,9 +282,27 @@ def check_rolling_zscore() -> None:
         record("rolling_zscore on macro", False, f"{type(e).__name__}: {e}")
 
 
+def _example_for_kind(cap, kind: str) -> str | None:
+    """Heuristic: pick an example from cap.examples that fits ``kind``.
+
+    - forex: looks for a 6-letter all-uppercase ticker (EURUSD, GBPUSD)
+    - ohlcv / macro / others: anything that doesn't match the forex pattern,
+      falling back to the first example
+    """
+    examples = cap.examples or []
+    if not examples:
+        return None
+    if kind == "forex":
+        fx = [e for e in examples if len(e) == 6 and e.isalpha() and e.isupper()]
+        return fx[0] if fx else None
+    non_fx = [e for e in examples if not (len(e) == 6 and e.isalpha() and e.isupper())]
+    return non_fx[0] if non_fx else examples[0]
+
+
 def check_per_source_contract_sweep() -> None:
-    """Iterate every registered Source and verify the ABC contract holds
-    end-to-end: fetch + schema match + search + describe + list_all.
+    """Iterate every registered Source × every kind it claims and verify
+    the ABC contract holds end-to-end: fetch + schema match + search +
+    describe + list_all.
 
     Generic — any new source added via scaffold_source.py is automatically
     covered. No per-source hand-coded expectations.
@@ -294,23 +312,31 @@ def check_per_source_contract_sweep() -> None:
         cap = src.capability
         if cap.status in {"deferred", "paid-only"} or not cap.examples:
             continue
-        example = cap.examples[0]
-        kind = cap.kinds[0]
-        ref = DataRef(source=src.name, kind=kind, name=example, interval="1d")
 
-        # fetch + schema match
-        try:
-            df = src.fetch(ref)
-            declared = set(cap.schema.get(kind, []))
-            actual = set(df.columns)
-            ok = declared.issubset(actual) and len(df) > 0
-            record(
-                f"{src.name}/{kind} {example}: fetch + schema",
-                ok,
-                f"rows={len(df)}, declared⊆actual={declared.issubset(actual)}",
-            )
-        except Exception as e:
-            record(f"{src.name}: fetch", False, f"{type(e).__name__}: {e}")
+        # fetch + schema match — exercise every kind the source claims.
+        for kind in cap.kinds:
+            example = _example_for_kind(cap, kind)
+            if example is None:
+                continue
+            ref = DataRef(source=src.name, kind=kind, name=example, interval="1d")
+            try:
+                df = src.fetch(ref)
+                declared = set(cap.schema.get(kind, []))
+                actual = set(df.columns)
+                ok = declared.issubset(actual) and len(df) > 0
+                record(
+                    f"{src.name}/{kind} {example}: fetch + schema",
+                    ok,
+                    f"rows={len(df)}, declared⊆actual={declared.issubset(actual)}",
+                )
+            except Exception as e:
+                record(
+                    f"{src.name}/{kind} {example}: fetch",
+                    False,
+                    f"{type(e).__name__}: {e}",
+                )
+
+        example = _example_for_kind(cap, cap.kinds[0]) or cap.examples[0]
 
         # search returns something OR is documented unsupported
         try:

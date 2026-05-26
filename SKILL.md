@@ -150,6 +150,21 @@ That generates the stub adapter + catalog entry stub with TODO markers. Then fil
 - **fred** — macro with native frequency per series (DGS10 daily from 1962, CPIAUCSL monthly from 1947, GDP quarterly from 1947). Don't assume daily granularity.
 - **gdelt** — global news, Lucene query syntax, rolling content from 2015. Live-tested at ~83% reliability with high latency variance (7–87s). Free-tier IP rate limit bites fast. **Avoid `OR` queries** — they consistently return 0 items in our tests; prefer single terms, `AND`, or quoted phrases. Treat as opportunistic, not critical-path.
 - **finnhub** — finance news; requires `FINNHUB_API_KEY` env var. **Use this when news matters** — higher rate limits + curated coverage.
+- **fmp** — equity OHLCV + **forex OHLC** via OpenBB Platform's `fmp` provider. Requires `FMP_API_KEY`. Free tier: 250 req/day (tight — cache-first essential). Forex symbols use no separator (`EURUSD`, `GBPUSD`).
+- **tiingo** — equity OHLCV + **forex OHLC** + IEX intraday via OpenBB Platform's `tiingo` provider. Requires `TIINGO_API_KEY`. Free tier: 1000 req/hr (generous). Forex same convention as FMP.
+- **polygon** — equity OHLCV + **forex OHLC** via hand-written REST adapter (Polygon not in OpenBB's bundled providers). Requires `POLYGON_API_KEY`. Free tier: 5 calls/min + ~2 years history. Forex tickers internally prefixed `C:` by the adapter; user passes the bare pair (`EURUSD`).
+
+### OHLCV variants — what each source covers
+
+| Asset class | Best free source(s) | Symbol convention |
+|---|---|---|
+| Equities + ETFs daily | `yfinance` (broadest) / `fmp` / `tiingo` / `polygon` | Bare ticker (AAPL, SPY) |
+| Equities intraday (1m/5m/1h) | `tiingo` (IEX free) / `fmp` / `polygon` / `yfinance` (limited) | Bare ticker + `interval=` |
+| Crypto OHLCV daily | `binance` (preferred) / `yfinance` `*-USD` | `BTCUSDT` on binance, `BTC-USD` on yfinance |
+| **Forex OHLC** | `fmp` / `tiingo` / `polygon` | `EURUSD`, `GBPUSD`, `USDJPY` (6-letter pair, no separator) |
+| Futures (continuous front-month) | `yfinance` only (`*=F`) | `ES=F`, `BTC=F`, `GC=F`, `CL=F` — none of the new four providers serve futures on their free tier |
+| Macro time series | `fred` only | Series ID (`DGS10`, `CPIAUCSL`) |
+| Indices | `yfinance` (`^GSPC`) / `fmp` / `polygon` | Caret prefix on yfinance, bare on others |
 
 ## Adding a new data source — checklist
 
