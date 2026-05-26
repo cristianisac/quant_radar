@@ -17,8 +17,10 @@ from quant_radar.cards.spec import DataRef
 
 # Side-effect imports: each module calls register_source() at import time.
 from quant_radar.sources import (  # noqa: F401
+    alphavantage_src,
     binance_src,
     fred_src,
+    marketaux_src,
     openbb_src,
     polygon_src,
     yfinance_src,

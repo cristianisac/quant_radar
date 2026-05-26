@@ -30,6 +30,10 @@ from quant_radar.tools.news import (
     score_sentiment,
     summarize_news,
 )
+from quant_radar.tools.sentiment import (
+    describe_sentiment_routing,
+    fetch_sentiment,
+)
 from quant_radar.tools.patterns import (
     channel_annotations,
     detect_breakouts,
@@ -82,6 +86,8 @@ __all__ = [
     "requirements_for",
     "rolling_zscore",
     "save_card_to_dashboard",
+    "describe_sentiment_routing",
+    "fetch_sentiment",
     "score_sentiment",
     "search_binance",
     "search_fred",
