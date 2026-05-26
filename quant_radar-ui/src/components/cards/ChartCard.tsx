@@ -14,6 +14,31 @@ const Plotly_ = Plotly as any;
 // ema_500 and the chart renders it — no rebuild, no code change.
 const OVERLAY_RE = /^(sma|ema)_(\d+)$/;
 
+// Column-agnostic price-series picker. Mirrors the Python rule
+// (CLAUDE.md): close → value → first numeric column. Used so single-
+// column frames like GDELT `news_tone` render as a line chart without
+// any frontend code edit.
+function pickFirstNumericColumn(
+  cols: Record<string, (number | string | null)[]>,
+): (number | null)[] | null {
+  for (const k of Object.keys(cols)) {
+    const arr = cols[k] ?? [];
+    let sawNum = false;
+    for (const v of arr) {
+      if (typeof v === "number" && Number.isFinite(v)) {
+        sawNum = true;
+        break;
+      }
+    }
+    if (sawNum) {
+      return arr.map((v) =>
+        typeof v === "number" && Number.isFinite(v) ? v : null,
+      );
+    }
+  }
+  return null;
+}
+
 function overlayFn(name: string): ((close: number[]) => (number | null)[]) | null {
   const m = OVERLAY_RE.exec(name);
   if (!m) return null;
@@ -168,7 +193,10 @@ function buildFigure(
   if (!data || data.timestamps.length === 0) return null;
   const cols = data.columns;
   const x = data.timestamps;
-  const close = cols.close ?? cols.value ?? [];
+  // Column-agnostic waterfall — matches CLAUDE.md's Python-side rule:
+  // close → value → first numeric column. Lets a single-column frame
+  // like GDELT's `tone` render without code edit.
+  const close = cols.close ?? cols.value ?? pickFirstNumericColumn(cols) ?? [];
   const isOhlcv = ["open", "high", "low", "close"].every((k) => k in cols);
   const spec = card.chart_spec;
 
@@ -207,7 +235,7 @@ function buildFigure(
   const secondAxisIndex = nRows + 1;
   if (hasSecond) {
     const cols2 = second.columns;
-    const close2 = cols2.close ?? cols2.value ?? [];
+    const close2 = cols2.close ?? cols2.value ?? pickFirstNumericColumn(cols2) ?? [];
     const secondName = pickLabel(second.name, second.display_name);
     traces.push({
       type: "scatter", mode: "lines",

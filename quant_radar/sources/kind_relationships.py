@@ -73,7 +73,7 @@ KIND_RELATIONSHIPS: dict[str, dict[str, Any]] = {
             "Price tells you what happened; news/social/patterns tell "
             "you why."
         ),
-        "kinds": ["ohlcv", "sentiment", "social_sentiment", "news"],
+        "kinds": ["ohlcv", "sentiment", "social_sentiment", "news", "news_tone"],
         "relationship": "primary_plus_context",
         "combo_tool": None,
         "rationale": (
@@ -81,8 +81,28 @@ KIND_RELATIONSHIPS: dict[str, dict[str, Any]] = {
             "spike', pair the price chart with whichever context kind "
             "the data supports. For US equities/ETFs: sentiment + news. "
             "For meme tickers (MU, GME, TSLA): also social_sentiment. "
-            "For crypto: social_sentiment + news (sentiment via AV "
-            "covers crypto too)."
+            "For crypto: social_sentiment + news + news_tone (GDELT "
+            "topic-level tone for the broader narrative)."
+        ),
+    },
+    "macro_mood_overlay": {
+        "description": (
+            "GDELT topic-level tone time-series (news_tone) charted "
+            "alongside an asset's OHLCV. Tone is article-level / "
+            "macro-mood, NOT per-ticker — use for narrative reads "
+            "('how is the crypto coverage tone shifting?'), not "
+            "per-stock signals."
+        ),
+        "kinds": ["news_tone", "ohlcv"],
+        "relationship": "primary_plus_context",
+        "combo_tool": None,
+        "rationale": (
+            "When the user asks about narrative shifts ('is bitcoin "
+            "coverage turning sour?', 'how is AI-stock sentiment vs "
+            "last month?'), pull a GDELT news_tone time-series against "
+            "the asset OHLCV. Don't use this for per-ticker sentiment — "
+            "GDELT tone is aggregated across all articles matching the "
+            "query, so multi-ticker matches dilute the signal."
         ),
     },
     "macro_with_asset": {

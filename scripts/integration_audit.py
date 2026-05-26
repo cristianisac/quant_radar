@@ -313,12 +313,17 @@ def check_per_source_contract_sweep() -> None:
         if cap.status in {"deferred", "paid-only"} or not cap.examples:
             continue
 
-        # fetch + schema match — exercise every kind the source claims.
+        # fetch + schema match — exercise every kind the source claims
+        # AND the Source ABC supports. Some catalog kinds (e.g. GDELT's
+        # `news`) have a list[dict] adapter that intentionally doesn't
+        # implement the Source ABC; skip those here.
         for kind in cap.kinds:
             example = _example_for_kind(cap, kind)
             if example is None:
                 continue
             ref = DataRef(source=src.name, kind=kind, name=example, interval="1d")
+            if not src.supports(ref):
+                continue
             try:
                 df = src.fetch(ref)
                 declared = set(cap.schema.get(kind, []))

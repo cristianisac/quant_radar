@@ -21,6 +21,7 @@ from quant_radar.sources import (  # noqa: F401
     apewisdom_src,
     binance_src,
     fred_src,
+    gdelt_src,
     marketaux_src,
     openbb_src,
     polygon_src,
