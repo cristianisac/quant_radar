@@ -15,7 +15,7 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
-CardType = Literal["chart", "news", "sentiment", "analysis", "combo"]
+CardType = Literal["chart", "news", "sentiment", "analysis", "combo", "table"]
 Target = Literal["main", "working"]
 AnnotationKind = Literal["hline", "vline", "trendline", "rect", "text"]
 

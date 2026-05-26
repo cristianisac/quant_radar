@@ -65,12 +65,45 @@ _wire_openbb_credentials()
 _CANONICAL = ("open", "high", "low", "close", "volume")
 
 
-# Schema columns kept per kind. Forex omits volume since interbank
-# OHLCV volume is quote-side noise, not real market volume.
+# Schema columns kept per kind. For fundamentals we keep *everything*
+# OpenBB returns (typically 30-50 financial fields) — the schema in the
+# catalog declares the minimum we promise; the audit checks
+# declared⊆actual which allows extras. The agent / UI use the full
+# payload.
 _KEEP_BY_KIND: dict[str, tuple[str, ...]] = {
     "ohlcv": _CANONICAL,
     "forex": ("open", "high", "low", "close"),
 }
+
+_FUNDAMENTAL_KINDS = {"income", "balance", "cash"}
+
+
+def _fetch_fundamentals(
+    obb_module, provider: str, kind: str, symbol: str, interval: str,
+) -> pd.DataFrame:
+    """Fetch one statement type (income/balance/cash) for ``symbol``.
+
+    ``interval`` carries the period selector ("quarter" or "annual").
+    Defaults to quarter when interval is anything else (1d, etc.) since
+    fundamentals aren't truly daily.
+    """
+    period = "annual" if interval in ("annual", "yearly", "1y") else "quarter"
+    method = getattr(obb_module.equity.fundamental, kind)
+    # FMP free tier caps ``limit`` at 5; respect the lowest common
+    # denominator across providers we wrap here. ~5 quarters or 5
+    # years of history is enough for a card-view preview, and the
+    # user always has the option to upgrade if more history matters.
+    result = method(symbol=symbol, provider=provider, period=period, limit=5)
+    df = result.to_df()
+    if df.empty:
+        return df
+    # OpenBB returns RangeIndex with `period_ending` as a column.
+    # Anchor each row to its fiscal-period-end date so the cache layer
+    # + the chart card's DatetimeIndex assumption hold.
+    df["period_ending"] = pd.to_datetime(df["period_ending"], utc=True)
+    df = df.set_index("period_ending").sort_index()
+    df.index.name = "timestamp"
+    return df
 
 
 def _fetch_via_openbb(
@@ -78,6 +111,15 @@ def _fetch_via_openbb(
     start: datetime | None, end: datetime | None, interval: str,
 ) -> pd.DataFrame:
     from openbb import obb
+
+    if kind in _FUNDAMENTAL_KINDS:
+        df = _fetch_fundamentals(obb, provider, kind, symbol, interval)
+        if not df.empty and (start is not None or end is not None):
+            if start is not None:
+                df = df[df.index >= pd.Timestamp(start, tz="UTC")]
+            if end is not None:
+                df = df[df.index <= pd.Timestamp(end, tz="UTC")]
+        return df
 
     kwargs: dict[str, object] = {
         "symbol": symbol, "provider": provider, "interval": interval,
@@ -97,10 +139,6 @@ def _fetch_via_openbb(
     df = result.to_df()
     if df.empty:
         return df
-    # OpenBB returns the index named "date" with object dtype (string
-    # dates). Normalize to a tz-aware DatetimeIndex named "timestamp"
-    # so the cache layer + downstream tools see the same shape every
-    # other adapter produces.
     df.columns = [str(c).lower() for c in df.columns]
     df.index = pd.to_datetime(df.index, utc=True)
     df.index.name = "timestamp"
@@ -158,7 +196,9 @@ class _OpenBBOHLCVSource(Source):
     namespace; equity uses equity.price.historical.
     """
 
-    PROVIDER: str = ""  # override in subclass
+    # Each concrete subclass overrides PROVIDER + KINDS based on what
+    # their provider actually serves on the free tier.
+    PROVIDER: str = ""
     KINDS: tuple[str, ...] = ("ohlcv", "forex")
 
     def supports(self, ref: _DataRef) -> bool:
@@ -193,11 +233,15 @@ class _OpenBBOHLCVSource(Source):
 class _FMPSource(_OpenBBOHLCVSource):
     PROVIDER = "fmp"
     capability = CATALOG["fmp"]
+    # FMP free tier covers OHLCV + forex + full fundamentals trio.
+    KINDS = ("ohlcv", "forex", "income", "balance", "cash")
 
 
 class _TiingoSource(_OpenBBOHLCVSource):
     PROVIDER = "tiingo"
     capability = CATALOG["tiingo"]
+    # Tiingo free tier: OHLCV + forex. Fundamentals are paid.
+    KINDS = ("ohlcv", "forex")
 
 
 register_source(_FMPSource())
