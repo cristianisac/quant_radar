@@ -142,3 +142,147 @@ def describe_social_sentiment_routing() -> dict[str, Any]:
     """Return the multi-source routing record for kind='social_sentiment'."""
     cov = kind_coverage.get_coverage("social_sentiment")
     return cov or {}
+
+
+def fetch_attention_and_polarity(
+    ticker: str, *,
+    refresh: bool = False,
+) -> dict[str, Any]:
+    """Combine the volume axis (Apewisdom) with the polarity axis (AV/Marketaux).
+
+    The two are orthogonal:
+
+    - **Attention** = how loud is the room? mention count + 24h velocity
+      from Apewisdom (Reddit-aggregator).
+    - **Polarity** = what is the news saying? mean sentiment score +
+      bullish/bearish/neutral label from Alpha Vantage (falls back to
+      Marketaux when AV quota is exhausted).
+
+    Returned dict shape::
+
+        {
+          "ticker": "MU",
+          "attention": {
+            "mentions": int, "mentions_24h_ago": int,
+            "mentions_change_pct": float, "rank": int,
+            "rank_24h_ago": int, "filter": "all-stocks"|"all-crypto",
+            "source": "apewisdom",
+          } | None,
+          "polarity": {
+            "mean_sentiment_score": float,        # ticker-relevance weighted
+            "label": "Bullish"|"Somewhat-Bullish"|"Neutral"|"Somewhat-Bearish"|"Bearish",
+            "article_count": int,
+            "source": "alphavantage"|"marketaux",
+          } | None,
+          "divergence": str,   # human-readable interpretation, see below
+        }
+
+    ``attention`` is None when Apewisdom doesn't list the ticker (no
+    chatter). ``polarity`` is None when every sentiment provider failed
+    (e.g. all quotas exhausted, ticker not covered).
+
+    The ``divergence`` string is the agent's headline read:
+
+    - ``"loud + positive"``: both axes agree, strong directional conviction
+    - ``"loud + negative"``: both axes agree, downside conviction
+    - ``"loud + neutral"``: pure attention spike, no news support — meme / speculative
+    - ``"loud + no news"``: high mentions, no news polarity available
+    - ``"quiet + positive"``: news upgrade not yet on retail's radar
+    - ``"quiet + negative"``: negative news not yet trending
+    - ``"quiet + neutral"``: nothing to see
+    - ``"no signal"``: neither axis returned data
+    """
+    # Attention
+    attention: dict[str, Any] | None = None
+    try:
+        df_a, src_a = fetch_social_sentiment(ticker, refresh=refresh)
+        if not df_a.empty:
+            row = df_a.iloc[0]
+            attention = {
+                "mentions": int(row["mentions"]),
+                "mentions_24h_ago": int(row["mentions_24h_ago"]),
+                "mentions_change_pct": float(row["mentions_change_pct"]),
+                "rank": int(row["rank"]),
+                "rank_24h_ago": int(row["rank_24h_ago"]),
+                "filter": str(row["filter"]),
+                "source": src_a,
+            }
+    except Exception:  # noqa: BLE001 — attention is optional
+        attention = None
+
+    # Polarity — weighted by per-article relevance so off-topic mentions
+    # don't drag the score.
+    polarity: dict[str, Any] | None = None
+    try:
+        df_p, src_p = fetch_sentiment(ticker, refresh=refresh)
+        if not df_p.empty and "sentiment_score" in df_p.columns:
+            scores = pd.to_numeric(df_p["sentiment_score"], errors="coerce").dropna()
+            relevance = pd.to_numeric(
+                df_p.get("relevance_score", pd.Series([1.0] * len(scores))),
+                errors="coerce",
+            ).fillna(1.0)
+            common = scores.index.intersection(relevance.index)
+            scores = scores.loc[common]
+            relevance = relevance.loc[common]
+            if len(scores) > 0 and relevance.sum() > 0:
+                mean_score = float((scores * relevance).sum() / relevance.sum())
+            elif len(scores) > 0:
+                mean_score = float(scores.mean())
+            else:
+                mean_score = 0.0
+            polarity = {
+                "mean_sentiment_score": round(mean_score, 4),
+                "label": _label_from_score(mean_score),
+                "article_count": int(len(df_p)),
+                "source": src_p,
+            }
+    except Exception:  # noqa: BLE001 — polarity is optional
+        polarity = None
+
+    return {
+        "ticker": ticker.upper(),
+        "attention": attention,
+        "polarity": polarity,
+        "divergence": _interpret_divergence(attention, polarity),
+    }
+
+
+def _label_from_score(score: float) -> str:
+    """Same thresholds as Alpha Vantage's published cutoffs."""
+    if score >= 0.35:
+        return "Bullish"
+    if score >= 0.10:
+        return "Somewhat-Bullish"
+    if score > -0.10:
+        return "Neutral"
+    if score > -0.35:
+        return "Somewhat-Bearish"
+    return "Bearish"
+
+
+def _interpret_divergence(
+    attention: dict[str, Any] | None,
+    polarity: dict[str, Any] | None,
+) -> str:
+    if attention is None and polarity is None:
+        return "no signal"
+
+    # "Loud" = mentions in top-100 of leaderboard OR mentions_change_pct >= 100%
+    is_loud = False
+    if attention is not None:
+        is_loud = (
+            attention["rank"] <= 100
+            or attention["mentions_change_pct"] >= 100.0
+        )
+
+    loud_str = "loud" if is_loud else "quiet"
+
+    if polarity is None:
+        return f"{loud_str} + no news"
+
+    label = polarity["label"]
+    if label in ("Bullish", "Somewhat-Bullish"):
+        return f"{loud_str} + positive"
+    if label in ("Bearish", "Somewhat-Bearish"):
+        return f"{loud_str} + negative"
+    return f"{loud_str} + neutral"
