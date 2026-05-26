@@ -164,6 +164,50 @@ CATALOG: dict[str, SourceCapability] = {
         },
         notes="Equity aggregates use bare ticker; forex aggregates use `C:<pair>` prefix (e.g. C:EURUSD). Adapter handles the prefix internally.",
     ),
+    "alphavantage": SourceCapability(
+        name="alphavantage",
+        kinds=["sentiment"],
+        intervals=["event"],
+        history="Rolling ~30 days of scored news articles.",
+        coverage="Global stocks + ETFs + crypto + FX. ML-based per-ticker sentiment scoring (overall + per-symbol relevance + label).",
+        auth="ALPHAVANTAGE_API_KEY env var (free signup at alphavantage.co/support/#api-key)",
+        rate_limit="25 req/day, 5 req/min — TIGHT. Cache aggressively.",
+        examples=["AAPL", "MSFT", "TSLA", "NVDA", "BTC-USD", "EURUSD"],
+        schema={
+            "sentiment": [
+                "sentiment_score", "relevance_score", "overall_score",
+                "sentiment_label", "title", "url", "article_source", "topics",
+            ],
+        },
+        notes=(
+            "Best-quality per-ticker news sentiment scoring. Primary source "
+            "in kind_coverage for kind='sentiment'. Falls back to marketaux "
+            "when daily quota exhausted. See quant_radar/sources/"
+            "kind_coverage.py for the full multi-source routing logic."
+        ),
+    ),
+    "marketaux": SourceCapability(
+        name="marketaux",
+        kinds=["sentiment"],
+        intervals=["event"],
+        history="Rolling articles, 30+ days back.",
+        coverage="Global incl. small caps + international. Wider symbol universe than Alpha Vantage but less rich per-article scoring.",
+        auth="MARKETAUX_API_KEY env var (free signup at marketaux.com/account/dashboard)",
+        rate_limit="100 req/day, 1 req/sec — more generous than AV.",
+        examples=["AAPL", "MSFT", "TSLA"],
+        schema={
+            "sentiment": [
+                "sentiment_score", "relevance_score", "overall_score",
+                "sentiment_label", "title", "url", "article_source", "topics",
+            ],
+        },
+        notes=(
+            "Fallback for kind='sentiment' when Alpha Vantage's 25/day quota "
+            "is exhausted, OR for tickers AV doesn't cover. Returns "
+            "per-entity sentiment_score; we derive a label heuristically "
+            "(>=0.35 Bullish, ..., <-0.35 Bearish) for UI parity with AV."
+        ),
+    ),
     "gdelt": SourceCapability(
         name="gdelt",
         kinds=["news"],

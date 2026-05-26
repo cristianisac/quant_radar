@@ -108,6 +108,32 @@ This is the realized "step 2" in the new-source waterfall (existing lib → Open
 ### Other deferred opportunities
 - **finnhub-python swap** — current finnhub adapter uses raw `requests` (~78 LOC). The official `finnhub-python` client would consolidate to ~50 LOC and unlock 50+ extra Finnhub endpoints (forex, fundamentals, earnings, calendar). Skipped because the test-mock refactor offsets the LOC savings; revisit when we actually want those endpoints.
 
+### Multi-source routing for a single data type
+
+When multiple sources serve the same ``kind`` (e.g. sentiment from
+Alpha Vantage AND Marketaux, or fundamentals from FMP AND Polygon),
+the agent shouldn't guess which to use. Read the structured comparison
+at **``quant_radar/sources/kind_coverage.py``** — it declares per-kind:
+
+- ``providers``: each source with tier (primary/fallback/complementary), rate limit, history depth, coverage breadth, signal-quality notes
+- ``default_chain``: the routing order to walk when no source is specified
+- ``routing_logic``: when to switch / combine / fall back
+
+For sentiment specifically the routing is:
+
+1. **Alpha Vantage** (primary) — best per-ticker scoring quality, but tight 25/day quota
+2. **Marketaux** (fallback) — wider symbol coverage, 100/day quota, less rich scoring
+3. **Finnhub** insider-sentiment + recommendation (complementary) — orthogonal signal, NOT a substitute for news sentiment
+4. **GDELT** tone (article-level) — for general mood, NOT per-ticker
+
+The agent should call ``tools.fetch_sentiment(ticker)`` which walks
+the chain automatically; the call returns ``(df, source_used)`` so the
+UI/agent can show which provider served the data. ``tools.describe_sentiment_routing()``
+returns the full comparison record when the user asks why a particular
+source was used.
+
+When you add a new source for an existing kind, update ``kind_coverage.py`` AND the source's catalog entry. Both must agree on the relationship.
+
 ### Adding a new source — the waterfall
 
 Don't write a 100-line adapter when an existing tool already covers it. The order below is "cheapest path that gets the job done". Stop at the first match. Note the order depends on what you need:

@@ -40,6 +40,7 @@ const PREFERRED_HEADLINE: Record<string, string[]> = {
   income: ["revenue", "gross_profit", "bottom_line_net_income", "diluted_earnings_per_share"],
   balance: ["total_assets", "total_liabilities", "total_debt", "cash_and_cash_equivalents"],
   cash: ["operating_cash_flow", "free_cash_flow"],
+  sentiment: ["sentiment_score", "relevance_score", "sentiment_label", "title"],
 };
 
 function pickHeadlineCols(kind: string, allCols: string[]): string[] {
