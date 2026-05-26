@@ -13,7 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from quant_radar.cards.spec import Annotation, ChartSpec, DataRef, LayoutHint
 
-CardType = Literal["chart", "news", "sentiment", "analysis", "combo"]
+CardType = Literal["chart", "news", "sentiment", "analysis", "combo", "table"]
 Target = Literal["main", "working"]
 
 
@@ -65,7 +65,11 @@ class TimeSeriesResponse(BaseModel):
     name: str
     interval: str
     timestamps: list[datetime]
-    columns: dict[str, list[float]]
+    # Per-column values. Most sources are pure-numeric (OHLCV, forex,
+    # macro) but fundamentals mix numbers + strings (fiscal_period
+    # "Q2", reported_currency "USD"). Allow ``Any`` so we don't lose
+    # information for the table-card render path.
+    columns: dict[str, list[Any]]
     # Human-readable name resolved per source (e.g. FRED "title" for
     # DGS10 → "10-Year Treasury Constant Maturity Rate"). None when no
     # friendly name is available — the UI falls back to ``name``.

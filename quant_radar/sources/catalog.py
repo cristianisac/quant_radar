@@ -113,18 +113,26 @@ CATALOG: dict[str, SourceCapability] = {
     ),
     "fmp": SourceCapability(
         name="fmp",
-        kinds=["ohlcv", "forex"],
-        intervals=["1m", "5m", "15m", "1h", "1d", "1w", "1mo"],
-        history="Equities from listing date (1985+ for major US tickers). Daily EOD reliable. Intraday + forex on free tier with rate limits.",
-        coverage="US equities + global ADRs + ETFs (~40k). Forex majors and most crosses. Adapter wraps OpenBB Platform's `fmp` provider.",
+        kinds=["ohlcv", "forex", "income", "balance", "cash"],
+        intervals=["1m", "5m", "15m", "1h", "1d", "1w", "1mo", "quarter", "annual"],
+        history="Equities from listing date (1985+ for major US tickers). Fundamentals from 1985+. Daily EOD reliable. Intraday + forex on free tier with rate limits.",
+        coverage="US equities + global ADRs + ETFs (~40k). Forex majors. Income statement / balance sheet / cash flow for ~30k tickers, quarterly + annual. Adapter wraps OpenBB Platform's `fmp` provider.",
         auth="FMP_API_KEY env var (free signup at financialmodelingprep.com)",
         rate_limit="250 req/day on free tier — modest; cache-first is essential",
         examples=["AAPL", "MSFT", "SPY", "TSLA", "NVDA", "EURUSD", "GBPUSD"],
         schema={
             "ohlcv": ["open", "high", "low", "close", "volume"],
             "forex": ["open", "high", "low", "close"],
+            # Fundamentals schemas use FMP's column names verbatim (e.g.
+            # `bottom_line_net_income` not `net_income`). When we add a
+            # second provider for fundamentals (Polygon), we'll normalize
+            # at that point; for now honesty about the upstream shape
+            # beats premature aliasing.
+            "income": ["fiscal_period", "fiscal_year", "revenue", "gross_profit", "bottom_line_net_income"],
+            "balance": ["fiscal_period", "fiscal_year", "total_assets", "total_liabilities", "total_debt"],
+            "cash": ["fiscal_period", "fiscal_year", "operating_cash_flow", "free_cash_flow"],
         },
-        notes="OHLCV via obb.equity.price.historical; forex via obb.currency.price.historical. FMP forex symbols use no separator (EURUSD, not EUR/USD).",
+        notes="OHLCV via obb.equity.price.historical; forex via obb.currency.price.historical. Fundamentals via obb.equity.fundamental.income/balance/cash with period='quarter'|'annual'. Adapter sets the DataFrame index to period_ending so each row is anchored to its fiscal period end-date.",
     ),
     "tiingo": SourceCapability(
         name="tiingo",

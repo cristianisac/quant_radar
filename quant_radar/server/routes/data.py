@@ -9,7 +9,7 @@ underlying fetchers.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import cast
+from typing import Any, cast
 
 import pandas as pd
 from fastapi import APIRouter, HTTPException
@@ -49,10 +49,28 @@ def get_data(
         )
 
     timestamps = [cast(pd.Timestamp, ts).to_pydatetime() for ts in df.index]
-    columns = {
-        col: [float(v) if pd.notna(v) else float("nan") for v in df[col]]
-        for col in df.columns
-    }
+    # Per-column serialization. Numeric cols become floats (NaN preserved
+    # as JSON null via Pydantic's None handling). Non-numeric cols (e.g.
+    # `fiscal_period: "Q2"`, `reported_currency: "USD"`) pass through as
+    # strings — fundamentals frames mix both. Datetimes serialize via
+    # ISO string. None when the underlying value is NaN/NA.
+    columns: dict[str, list[Any]] = {}
+    for col in df.columns:
+        series = df[col]
+        if pd.api.types.is_numeric_dtype(series):
+            columns[col] = [
+                float(v) if pd.notna(v) else None for v in series
+            ]
+        elif pd.api.types.is_datetime64_any_dtype(series):
+            columns[col] = [
+                cast(pd.Timestamp, v).isoformat() if pd.notna(v) else None
+                for v in series
+            ]
+        else:
+            columns[col] = [
+                None if pd.isna(v) else (v if isinstance(v, str) else str(v))
+                for v in series
+            ]
     return TimeSeriesResponse(
         source=source, kind=kind, name=name, interval=interval,
         timestamps=timestamps, columns=columns, display_name=display_name,

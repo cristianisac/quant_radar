@@ -7,6 +7,7 @@ import { AnalysisCard } from "./cards/AnalysisCard";
 import { ChartCard } from "./cards/ChartCard";
 import { NewsCard } from "./cards/NewsCard";
 import { SentimentCard } from "./cards/SentimentCard";
+import { TableCard } from "./cards/TableCard";
 
 interface Props {
   card: Card | null;
@@ -51,6 +52,7 @@ export function EnlargeModal({ card, onClose }: Props) {
           {card.type === "news" && <NewsCard card={card} />}
           {card.type === "sentiment" && <SentimentCard card={card} />}
           {card.type === "analysis" && <AnalysisCard card={card} />}
+          {card.type === "table" && <TableCard card={card} enlarged />}
         </div>
         {(card.type === "chart" || card.type === "combo") && (
           <div className="px-4 py-2 border-t border-border text-xs text-muted">

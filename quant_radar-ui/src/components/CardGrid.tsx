@@ -12,6 +12,7 @@ import { AnalysisCard } from "./cards/AnalysisCard";
 import { ChartCard } from "./cards/ChartCard";
 import { NewsCard } from "./cards/NewsCard";
 import { SentimentCard } from "./cards/SentimentCard";
+import { TableCard } from "./cards/TableCard";
 
 // Diagnostic wrapper: catches errors from any card renderer so a
 // single bad card doesn't take down the entire dashboard.
@@ -68,6 +69,9 @@ function renderCard(card: Card) {
       break;
     case "analysis":
       inner = <AnalysisCard card={card} />;
+      break;
+    case "table":
+      inner = <TableCard card={card} />;
       break;
     default:
       inner = <AnalysisCard card={card} />;
