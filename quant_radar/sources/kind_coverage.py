@@ -31,6 +31,50 @@ from __future__ import annotations
 from typing import Any
 
 KIND_COVERAGE: dict[str, dict[str, Any]] = {
+    "social_sentiment": {
+        "description": (
+            "Reddit-driven mention-velocity per ticker. NOT classical "
+            "polarity sentiment (-1..1) — this is a count of how many "
+            "times a ticker is being talked about right now vs. 24h ago. "
+            "Best as a viral-attention signal that often precedes "
+            "meme-driven moves. Pair with `kind='sentiment'` (AV/"
+            "Marketaux) for actual polarity."
+        ),
+        "providers": {
+            "apewisdom": {
+                "tier": "primary",
+                "rate_limit": "no documented limit; cache intraday (5 min)",
+                "history": "Rolling 24h window only — no archive",
+                "coverage": (
+                    "Stocks/ETFs/listed companies (~870 via all-stocks) + "
+                    "crypto (~160 via all-crypto). Commodities/bonds only "
+                    "via listed proxies (GLD, TLT, USO)."
+                ),
+                "signal_quality": (
+                    "mentions + mentions_24h_ago + rank + rank_24h_ago "
+                    "+ upvotes. Spike detection: mentions_change_pct > "
+                    "5×–10× is the viral-attention threshold."
+                ),
+                "granularity": "per-ticker snapshot",
+                "notes": (
+                    "Crypto tickers stored with .X suffix (BTC.X, ETH.X); "
+                    "adapter accepts either shape. No auth, public endpoint."
+                ),
+            },
+        },
+        "default_chain": ["apewisdom"],
+        "complementary_signals": ["alphavantage", "marketaux"],
+        "routing_logic": (
+            "Apewisdom is the only free social-sentiment source we've "
+            "kept after Stocktwits went Cloudflare-protected and Reddit "
+            "PRAW app registration proved unreliable. For 'is anyone "
+            "talking about X right now?' → apewisdom. For polarity of "
+            "what's being said in news → kind='sentiment' (AV/Marketaux). "
+            "The two are orthogonal — a ticker can be high-mention with "
+            "neutral sentiment (mixed coverage) or low-mention with "
+            "strong positive sentiment (analyst upgrade, no chatter yet)."
+        ),
+    },
     "sentiment": {
         "description": (
             "Per-ticker news sentiment scores. Returned as a time-series "

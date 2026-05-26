@@ -132,6 +132,16 @@ UI/agent can show which provider served the data. ``tools.describe_sentiment_rou
 returns the full comparison record when the user asks why a particular
 source was used.
 
+For **social_sentiment** (separate kind — Reddit mention-velocity, not
+news polarity), routing is single-source:
+
+1. **Apewisdom** (primary) — public no-auth endpoint; covers stocks/ETFs/listed companies via `all-stocks` filter (~870 tickers) and crypto via `all-crypto` (~160 tickers). Returns a current snapshot row per ticker: mentions, mentions_24h_ago, mentions_change_pct, upvotes, rank, rank_24h_ago. Commodities/bonds only surface via listed proxies (GLD, TLT, USO). Stocktwits and Reddit-direct were deferred (Cloudflare gates / unreliable signup).
+
+Call ``tools.fetch_social_sentiment(ticker)``. The two kinds are
+**orthogonal**: a ticker can be high-mention but neutral-polarity (mixed
+coverage) or low-mention but strongly positive (analyst upgrade, no
+chatter yet). Combine them when the user wants the full picture.
+
 When you add a new source for an existing kind, update ``kind_coverage.py`` AND the source's catalog entry. Both must agree on the relationship.
 
 ### Adding a new source — the waterfall

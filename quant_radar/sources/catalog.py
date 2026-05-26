@@ -208,6 +208,45 @@ CATALOG: dict[str, SourceCapability] = {
             "(>=0.35 Bullish, ..., <-0.35 Bearish) for UI parity with AV."
         ),
     ),
+    "apewisdom": SourceCapability(
+        name="apewisdom",
+        kinds=["social_sentiment"],
+        intervals=["snapshot"],
+        history=(
+            "Rolling 24h window only. Apewisdom publishes the current "
+            "leaderboard plus a 24h-prior comparison per ticker — there "
+            "is no historical archive. Each refresh overwrites with the "
+            "latest snapshot."
+        ),
+        coverage=(
+            "Tickers being discussed on tracked subreddits (WSB, "
+            "wallstreetbetsELITE, stocks, investing, cryptocurrency, "
+            "satoshistreetbets, ...). ~870 stocks/ETFs in `all-stocks`, "
+            "~160 crypto in `all-crypto`. Commodities/bonds surface only "
+            "via listed proxies (GLD, TLT, USO)."
+        ),
+        auth="none",
+        rate_limit=(
+            "no documented limit; unauthenticated public endpoint. Cache "
+            "intraday (5 min) — leaderboard rotates throughout the day."
+        ),
+        examples=["MU", "SPY", "ASTS", "TSLA", "NVDA", "BTC", "ETH"],
+        schema={
+            "social_sentiment": [
+                "ticker", "name",
+                "mentions", "mentions_24h_ago", "mentions_change_pct",
+                "upvotes", "rank", "rank_24h_ago", "filter",
+            ],
+        },
+        notes=(
+            "Mention-velocity signal (not classical -1..1 sentiment). "
+            "Most useful as a *viral-attention* indicator: a 5×–10× "
+            "spike in mentions_change_pct typically precedes meme-driven "
+            "price moves. Pair with AV/Marketaux for actual sentiment "
+            "polarity. Crypto tickers stored with .X suffix (BTC.X); "
+            "adapter accepts either shape."
+        ),
+    ),
     "gdelt": SourceCapability(
         name="gdelt",
         kinds=["news"],

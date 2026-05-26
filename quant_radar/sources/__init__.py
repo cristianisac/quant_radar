@@ -1,5 +1,6 @@
 from quant_radar.sources import (
     alphavantage_src,
+    apewisdom_src,
     binance_src,
     finnhub_src,
     fred_src,
@@ -12,6 +13,7 @@ from quant_radar.sources import (
 
 __all__ = [
     "alphavantage_src",
+    "apewisdom_src",
     "binance_src",
     "finnhub_src",
     "fred_src",
