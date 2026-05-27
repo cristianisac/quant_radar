@@ -65,6 +65,24 @@ KIND_RELATIONSHIPS: dict[str, dict[str, Any]] = {
             "sec_filings table catches 10-K / 10-Q / 8-K / etc."
         ),
     },
+    "options_overlay": {
+        "description": (
+            "Options chain (strikes + expirations) layered onto the "
+            "underlying's OHLCV. Read implied positioning by where "
+            "open interest / strike density clusters."
+        ),
+        "kinds": ["options_chain", "ohlcv"],
+        "relationship": "primary_plus_context",
+        "combo_tool": None,
+        "rationale": (
+            "When the user asks about positioning, gamma exposure, or "
+            "'where are the bets', pair OHLCV with the options chain. "
+            "Strike density at a given expiration is a crude open-"
+            "interest proxy; per-contract aggregates (separate "
+            "DataRef with the contract_ticker as name) give the "
+            "actual historical volume."
+        ),
+    },
     "event_calendar_overlay": {
         "description": (
             "Forward event calendars (earnings, IPOs) layered with the "
