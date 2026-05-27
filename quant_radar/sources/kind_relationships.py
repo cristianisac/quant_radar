@@ -47,6 +47,22 @@ KIND_RELATIONSHIPS: dict[str, dict[str, Any]] = {
             "polarity misses retail attention spikes."
         ),
     },
+    "event_calendar_overlay": {
+        "description": (
+            "Forward event calendars (earnings, IPOs) layered with the "
+            "ticker's OHLCV chart. Tells the agent where the next "
+            "catalysts are without leaving the price view."
+        ),
+        "kinds": ["earnings_calendar", "ipo_calendar", "ohlcv"],
+        "relationship": "primary_plus_context",
+        "combo_tool": None,
+        "rationale": (
+            "When the user asks 'what's coming up' or wants to position "
+            "around an upcoming print, pair OHLCV with the relevant "
+            "calendar. Earnings calendar for individual names; IPO "
+            "calendar for sector-wide flow / new-listing impact."
+        ),
+    },
     "shareholder_returns": {
         "description": (
             "Dividends + splits give the full picture of cash + structural "

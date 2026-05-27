@@ -296,8 +296,8 @@ CATALOG: dict[str, SourceCapability] = {
     ),
     "finnhub": SourceCapability(
         name="finnhub",
-        kinds=["news", "insider"],
-        intervals=["news: real-time / per-window; insider: rolling 12mo"],
+        kinds=["news", "insider", "earnings_calendar", "ipo_calendar"],
+        intervals=["news: real-time / per-window; insider: rolling 12mo; calendars: forward-window scoped"],
         history=(
             "Free tier: company news ~1 year back per call; general news "
             "rolling real-time; insider-transactions rolling 12 months."
@@ -309,17 +309,34 @@ CATALOG: dict[str, SourceCapability] = {
         ),
         auth="FINNHUB_API_KEY env var (free signup at finnhub.io)",
         rate_limit="60 calls/min on the free tier",
-        examples=["AAPL", "MSFT", "TSLA", "NVDA"],
+        # `30d`/`7d`/`60d`/`90d` are window literals interpreted by the
+        # calendar adapters as forward-looking windows from now. AAPL etc.
+        # are used by news + insider.
+        examples=["AAPL", "MSFT", "TSLA", "NVDA", "30d"],
         schema={
             "news": ["title", "url", "source", "published_at", "summary"],
             "insider": [
                 "transaction_price", "share", "change", "transaction_code",
                 "insider_name", "filing_date", "is_derivative", "source",
             ],
+            "earnings_calendar": [
+                "symbol", "eps_estimate", "eps_actual",
+                "revenue_estimate", "revenue_actual",
+                "hour", "quarter", "year",
+            ],
+            "ipo_calendar": [
+                "symbol", "company_name", "exchange",
+                "number_of_shares", "price", "status",
+                "total_shares_value",
+            ],
         },
         notes=(
-            "ETF holdings + analyst recommendation time-series are also "
-            "free, but ETF holdings is paywalled (verified 2026-05-26). "
+            "Calendars are window-scoped — ref.name accepts '7d' / '30d' "
+            "/ '60d' / '90d' (default 30d). Economic calendar is paid on "
+            "every free provider we have keys for (FMP 402, "
+            "tradingeconomics requires paid key) — deferred. ETF "
+            "holdings + analyst recommendation time-series also free on "
+            "Finnhub, but ETF holdings is paywalled (verified 2026-05-26). "
             "Recommendation trends ship in phase 2b.4."
         ),
     ),

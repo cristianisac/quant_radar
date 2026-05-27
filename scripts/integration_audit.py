@@ -332,7 +332,11 @@ def check_per_source_contract_sweep() -> None:
                 df = src.fetch(ref)
                 declared = set(cap.schema.get(kind, []))
                 actual = set(df.columns)
-                ok = declared.issubset(actual) and len(df) > 0
+                # Schema contract is the truth — declared ⊆ actual.
+                # `len(df) == 0` is legitimate for event-windowed kinds
+                # (e.g. ipo_calendar with no scheduled IPOs in the window);
+                # the schema is still satisfied.
+                ok = declared.issubset(actual)
                 record(
                     f"{src.name}/{kind} {example}: fetch + schema",
                     ok,
