@@ -31,6 +31,75 @@ from __future__ import annotations
 from typing import Any
 
 KIND_COVERAGE: dict[str, dict[str, Any]] = {
+    "crypto": {
+        "description": (
+            "Crypto OHLCV — open/high/low/close/volume per bar. "
+            "Binance is the primary path (full exchange-native data, "
+            "no auth, ~2k spot pairs); FMP and Tiingo are fallbacks for "
+            "when binance is rate-limited or doesn't list the pair."
+        ),
+        "providers": {
+            "binance": {
+                "tier": "primary",
+                "rate_limit": "1200 request-weight/min/IP — effectively unlimited",
+                "history": "From the pair's first trade on Binance (2017-08-17 for BTC/ETH)",
+                "coverage": (
+                    "1500+ spot pairs in every major quote (USDT, USDC, "
+                    "BUSD, FDUSD, TUSD, BTC, ETH, BNB, EUR, GBP). Bare "
+                    "symbols auto-mapped to *USDT (BTC → BTCUSDT)."
+                ),
+                "signal_quality": (
+                    "Exchange-native — same data the matching engine "
+                    "uses. Tick precision; volume is real exchange volume."
+                ),
+                "granularity": "1m/5m/15m/1h/1d/1w/1mo with full pagination",
+                "notes": (
+                    "Default for any crypto OHLCV request. Try binance "
+                    "first; fall back to FMP/Tiingo only on rate-limit "
+                    "or missing pair."
+                ),
+            },
+            "fmp": {
+                "tier": "fallback",
+                "rate_limit": "250 req/day on free tier — modest",
+                "history": "Multi-year for major pairs",
+                "coverage": (
+                    "BTCUSD/ETHUSD and other USD-quoted majors. Symbol "
+                    "format is `<base><quote>` (BTCUSD, not BTC-USD)."
+                ),
+                "signal_quality": (
+                    "Aggregated cross-exchange. Volume is a composite, "
+                    "not single-venue."
+                ),
+                "granularity": "1d primarily; intraday with limits",
+                "notes": "Use when binance is rate-limited or for a USD cross-check.",
+            },
+            "tiingo": {
+                "tier": "fallback",
+                "rate_limit": "1000 req/hr on free tier — generous",
+                "history": "Multi-year",
+                "coverage": (
+                    "USD-quoted majors (BTCUSD, ETHUSD, ...). Same "
+                    "naming convention as FMP."
+                ),
+                "signal_quality": (
+                    "Cross-exchange composite. Provides volume_notional "
+                    "in USD on top of base-volume."
+                ),
+                "granularity": "1d / 1h / intraday",
+                "notes": "Generous quota makes this the better fallback for batch backfills.",
+            },
+        },
+        "default_chain": ["binance", "fmp", "tiingo"],
+        "routing_logic": (
+            "Binance first for any crypto request. When binance is "
+            "rate-limited (HTTP 429 / weight exhausted) or the pair "
+            "isn't listed, fall back to FMP, then Tiingo. The three "
+            "agree closely on price but disagree on volume (binance = "
+            "single-venue; FMP/Tiingo = composite). For volume-driven "
+            "analysis, prefer binance."
+        ),
+    },
     "social_sentiment": {
         "description": (
             "Reddit-driven mention-velocity per ticker. NOT classical "
