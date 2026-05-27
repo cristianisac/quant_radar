@@ -180,6 +180,88 @@ def describe_ticker(symbol: str) -> dict | None:
     }
 
 
+# --- Options chain (kind="options_chain") -------------------------------
+#
+# Polygon /v3/reference/options/contracts is free-tier accessible. For
+# a card-view preview we return a flat table of upcoming contracts:
+# strike, expiration, call/put, primary exchange, the contract ticker
+# (which the agent can pass to /v2/aggs to get historical prices).
+#
+# Indexed by expiration_date so chains naturally sort to the near
+# expiries first. The free tier caps per-call results to ~1000.
+
+
+def fetch_options_chain(
+    underlying: str, *,
+    start: datetime | None = None, end: datetime | None = None,
+    refresh: bool = False,
+) -> pd.DataFrame:
+    """Options contracts list for ``underlying``.
+
+    Returns one row per available contract: strike, contract type
+    (call/put), expiration_date (index), exchange, shares_per_contract,
+    the contract ticker (O:<sym><exp><CP><strike>).
+
+    Optionally filters by ``start`` / ``end`` on the expiration date so
+    the user can request "options expiring next 30 days" by passing a
+    start of today and end of today+30d.
+    """
+
+    key = CacheKey(
+        source=SOURCE, kind="options_chain",
+        name=underlying.upper(), interval="event",
+    )
+
+    def fetcher(
+        start: datetime | None = None, end: datetime | None = None,
+    ) -> pd.DataFrame:
+        params: dict[str, object] = {
+            "underlying_ticker": underlying.upper(),
+            "limit": 1000,
+            "order": "asc",
+            "sort": "expiration_date",
+            "apiKey": _key(),
+        }
+        if start is not None:
+            params["expiration_date.gte"] = start.strftime("%Y-%m-%d")
+        if end is not None:
+            params["expiration_date.lte"] = end.strftime("%Y-%m-%d")
+        resp = requests.get(
+            f"{_BASE}/v3/reference/options/contracts",
+            params=params, timeout=_TIMEOUT,
+        )
+        resp.raise_for_status()
+        items = (resp.json() or {}).get("results") or []
+        rows: list[dict[str, object]] = []
+        for it in items:
+            try:
+                ts = pd.to_datetime(it.get("expiration_date"), utc=True)
+            except Exception:
+                continue
+            rows.append({
+                "timestamp": ts,
+                "contract_type": it.get("contract_type") or "",
+                "strike_price": float(it.get("strike_price") or 0.0),
+                "contract_ticker": it.get("ticker") or "",
+                "primary_exchange": it.get("primary_exchange") or "",
+                "shares_per_contract": int(it.get("shares_per_contract") or 0),
+                "exercise_style": it.get("exercise_style") or "",
+            })
+        if not rows:
+            return pd.DataFrame(columns=[
+                "contract_type", "strike_price", "contract_ticker",
+                "primary_exchange", "shares_per_contract", "exercise_style",
+            ])
+        df = pd.DataFrame(rows).set_index("timestamp").sort_index()
+        df.index.name = "timestamp"
+        return df
+
+    return get_or_fetch(
+        key, fetcher, start=start, end=end, refresh=refresh,
+        ttl_seconds=ttl_for_interval("1d"),
+    )
+
+
 # --- Per-ticker news ---------------------------------------------------
 #
 # Polygon's /v2/reference/news endpoint serves rich article rows on the
@@ -262,7 +344,7 @@ def fetch_ticker_news(
 
 class _PolygonSource(Source):
     capability = CATALOG["polygon"]
-    KINDS = ("ohlcv", "forex", "ticker_news")
+    KINDS = ("ohlcv", "forex", "ticker_news", "options_chain")
 
     def supports(self, ref: _DataRef) -> bool:
         return ref.source == SOURCE and ref.kind in self.KINDS
@@ -270,6 +352,10 @@ class _PolygonSource(Source):
     def fetch(self, ref: _DataRef, *, refresh: bool = False) -> pd.DataFrame:
         if ref.kind == "ticker_news":
             return fetch_ticker_news(
+                ref.name, start=ref.start, end=ref.end, refresh=refresh,
+            )
+        if ref.kind == "options_chain":
+            return fetch_options_chain(
                 ref.name, start=ref.start, end=ref.end, refresh=refresh,
             )
         return fetch_ohlcv(

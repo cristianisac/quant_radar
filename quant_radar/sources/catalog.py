@@ -174,10 +174,10 @@ CATALOG: dict[str, SourceCapability] = {
     ),
     "polygon": SourceCapability(
         name="polygon",
-        kinds=["ohlcv", "forex", "ticker_news"],
-        intervals=["1m", "5m", "15m", "1h", "1d", "1w", "1mo", "event (ticker_news)"],
-        history="Free tier: ~2 years EOD daily for stocks. Forex on free tier. Futures + options require paid plans. Per-ticker news is rolling.",
-        coverage="US equities + ETFs + indices + crypto + FX (~70k tickers). Per-ticker news with LLM-derived sentiment + reasoning + keywords. Hand-written REST adapter (Polygon not in OpenBB Platform's bundled providers).",
+        kinds=["ohlcv", "forex", "ticker_news", "options_chain"],
+        intervals=["1m", "5m", "15m", "1h", "1d", "1w", "1mo", "event (ticker_news + options_chain)"],
+        history="Free tier: ~2 years EOD daily for stocks. Forex + options reference data free. Futures require paid plans. Per-ticker news is rolling.",
+        coverage="US equities + ETFs + indices + crypto + FX (~70k tickers). Per-ticker news with LLM-derived sentiment + reasoning + keywords. Options chain reference data (strike/expiration/CP) — historical per-contract aggregates also free. Hand-written REST adapter (Polygon not in OpenBB Platform's bundled providers).",
         auth="POLYGON_API_KEY env var (free signup at polygon.io)",
         rate_limit="5 calls/min on free tier — tight; cache aggressively",
         examples=["AAPL", "MSFT", "SPY", "EURUSD", "GBPUSD"],
@@ -187,6 +187,15 @@ CATALOG: dict[str, SourceCapability] = {
             "ticker_news": [
                 "title", "author", "publisher", "article_url",
                 "sentiment", "sentiment_reasoning", "keywords",
+            ],
+            # Options chain — one row per available contract.
+            # contract_ticker is Polygon's OCC-format symbol (e.g.
+            # O:AAPL260620C00200000) that can be fed straight into
+            # /v2/aggs to get historical pricing for THAT specific
+            # contract.
+            "options_chain": [
+                "contract_type", "strike_price", "contract_ticker",
+                "primary_exchange", "shares_per_contract", "exercise_style",
             ],
         },
         notes="Equity aggregates use bare ticker; forex aggregates use `C:<pair>` prefix (e.g. C:EURUSD). Adapter handles the prefix internally.",
