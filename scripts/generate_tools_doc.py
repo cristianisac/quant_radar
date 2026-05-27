@@ -96,6 +96,13 @@ _TOOL_GROUPS: list[tuple[str, list[str]]] = [
         ],
     ),
     (
+        "Economic calendar",
+        [
+            "fetch_economic_calendar",
+            "describe_economic_calendar_routing",
+        ],
+    ),
+    (
         "Discovery / source introspection",
         [
             "list_sources",

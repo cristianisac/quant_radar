@@ -31,6 +31,63 @@ from __future__ import annotations
 from typing import Any
 
 KIND_COVERAGE: dict[str, dict[str, Any]] = {
+    "economic_calendar": {
+        "description": (
+            "Per-country economic calendar — scheduled macro releases "
+            "with actual / previous / consensus / forecast columns. "
+            "Default window is the current calendar week (Mon→Sun); "
+            "DataRef.start/end widens or shifts it (still bounded by "
+            "the ~4 weeks Trading Economics renders)."
+        ),
+        "providers": {
+            "tradingeconomics": {
+                "tier": "primary",
+                "rate_limit": (
+                    "No documented limit on the country pages; cache "
+                    "intraday (5 min). Be polite — once per few minutes."
+                ),
+                "history": (
+                    "Current week + ~3 upcoming weeks rolling. No "
+                    "deeper history on free; TE reserves that for paid."
+                ),
+                "coverage": (
+                    "~25 countries via per-country slugs (united-states, "
+                    "euro-area, united-kingdom, germany, france, japan, "
+                    "china, canada, australia, ...). Captures the "
+                    "proprietary indicators FRED can't schedule: ISM, "
+                    "S&P Global PMI, Consumer Confidence, ECB/Fed "
+                    "speakers, rate decisions, etc."
+                ),
+                "signal_quality": (
+                    "Full 4-column schema: actual / previous / "
+                    "consensus / forecast. Trading Economics is the "
+                    "canonical source for the consensus + forecast "
+                    "columns most calendars expose."
+                ),
+                "granularity": "per-event row with time-of-day in UTC",
+                "notes": (
+                    "ToS gray area — TE's Terms of Use prohibit "
+                    "automated extraction (their public guest:guest "
+                    "token was discontinued 2026). Country-page "
+                    "scraping works technically but is using a "
+                    "side-door around their pricing. Personal research "
+                    "only; do not redistribute."
+                ),
+            },
+        },
+        "default_chain": ["tradingeconomics"],
+        "complementary_signals": [],
+        "routing_logic": (
+            "Trading Economics is currently the only free provider "
+            "of a complete actual/previous/consensus/forecast economic "
+            "calendar. FRED's `/releases/dates` endpoint can give a "
+            "longer-horizon schedule (months out) but without the "
+            "consensus/forecast columns — wire that as a fallback if/"
+            "when TE's HTML changes break the parser. For paid plans, "
+            "the OpenBB `tradingeconomics` provider needs the licensed "
+            "key and gives the same data via `obb.economy.calendar`."
+        ),
+    },
     "crypto": {
         "description": (
             "Crypto OHLCV — open/high/low/close/volume per bar. "
