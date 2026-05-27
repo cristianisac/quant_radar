@@ -353,6 +353,10 @@ CATALOG: dict[str, SourceCapability] = {
             ],
         },
         notes=(
+            "**Default window**: when no start/end is passed on the "
+            "DataRef, the adapter returns the current calendar week "
+            "(Monday→Sunday UTC). Pass explicit start/end to widen — "
+            "still bounded by the ~4 weeks TE renders. "
             "**ToS gray area.** Trading Economics' Terms of Use prohibit "
             "automated extraction. Their public `guest:guest` HTTP API "
             "token was discontinued in 2026 to push everyone to paid "
