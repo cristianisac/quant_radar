@@ -26,6 +26,7 @@ from quant_radar.sources import (  # noqa: F401
     marketaux_src,
     openbb_src,
     polygon_src,
+    tradingeconomics_src,
     yfinance_src,
 )
 from quant_radar.sources.base_source import get_source

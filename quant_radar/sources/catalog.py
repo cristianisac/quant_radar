@@ -324,6 +324,46 @@ CATALOG: dict[str, SourceCapability] = {
             "news_tone": ["tone"],
         },
     ),
+    "tradingeconomics": SourceCapability(
+        name="tradingeconomics",
+        kinds=["economic_calendar"],
+        intervals=["event (~4 weeks rolling)"],
+        history=(
+            "Country calendar pages serve the current week + ~3 upcoming "
+            "weeks. No history or far-future support — ToS reserves "
+            "that for paid plans."
+        ),
+        coverage=(
+            "Per-country pages: united-states, euro-area, united-kingdom, "
+            "germany, france, italy, spain, japan, china, canada, "
+            "australia, plus ~20 others. Covers all major releases for "
+            "the country incl. proprietary indicators (PMIs, Consumer "
+            "Confidence, ECB/Fed speakers, central-bank rate decisions)."
+        ),
+        auth="none (scraped from public HTML)",
+        rate_limit=(
+            "No documented limit. Be polite — once per few minutes; the "
+            "underlying data only changes when events tick off."
+        ),
+        examples=["united-states", "euro-area", "united-kingdom", "germany", "japan", "china"],
+        schema={
+            "economic_calendar": [
+                "country", "event", "period",
+                "actual", "previous", "consensus", "forecast",
+            ],
+        },
+        notes=(
+            "**ToS gray area.** Trading Economics' Terms of Use prohibit "
+            "automated extraction. Their public `guest:guest` HTTP API "
+            "token was discontinued in 2026 to push everyone to paid "
+            "plans. Country-page scraping still works technically but "
+            "is a side-door around their pricing — acceptable for "
+            "personal research, not for redistribution. The OpenBB "
+            "`tradingeconomics` provider for `obb.economy.calendar` "
+            "needs a paid key and is the clean licensed path; this "
+            "adapter scrapes country pages with no auth."
+        ),
+    ),
     "finnhub": SourceCapability(
         name="finnhub",
         kinds=[

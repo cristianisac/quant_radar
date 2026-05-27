@@ -83,6 +83,24 @@ KIND_RELATIONSHIPS: dict[str, dict[str, Any]] = {
             "actual historical volume."
         ),
     },
+    "macro_event_overlay": {
+        "description": (
+            "Economic calendar (CPI, NFP, ECB / Fed decisions, PMIs) "
+            "layered against an asset's price chart. Tells the agent "
+            "which scheduled macro prints to watch and shows where in "
+            "history past prints printed surprise vs consensus."
+        ),
+        "kinds": ["economic_calendar", "ohlcv", "macro"],
+        "relationship": "primary_plus_context",
+        "combo_tool": None,
+        "rationale": (
+            "When the user asks about positioning around a macro print "
+            "(CPI day, NFP, FOMC), pair the relevant economic_calendar "
+            "table with the asset OHLCV. For long-horizon studies pair "
+            "with the matching FRED macro series — historical actuals "
+            "in the same shape as the upcoming forecasts."
+        ),
+    },
     "event_calendar_overlay": {
         "description": (
             "Forward event calendars (earnings, IPOs) layered with the "

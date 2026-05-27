@@ -108,7 +108,7 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 | kind | declared schema | verified | detail |
 |---|---|:---:|---|
 | `news` | `title`, `url`, `source`, `published_at` | ✅ | non-conforming surface (not ABC) |
-| `news_tone` | `tone` | ❌ | HTTPError: 429 Client Error: Too Many Requests for url: https://api.gdeltproject.org/api/v2/doc/doc?query=Bitcoin&mode=timelinetone&format=json&timespan=7d |
+| `news_tone` | `tone` | ✅ | rows=164, schema⊆actual=True |
 
 ### `marketaux`
 
@@ -151,6 +151,18 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 | `forex` | `open`, `high`, `low`, `close` | ✅ | rows=314, schema⊆actual=True |
 | `crypto` | `open`, `high`, `low`, `close`, `volume` | ❌ | EmptyDataError: 
 [Empty] -> The response is empty |
+
+### `tradingeconomics`
+
+- **Auth**: none (scraped from public HTML)
+- **Rate limit**: No documented limit. Be polite — once per few minutes; the underlying data only changes when events tick off.
+- **Status**: active
+- **Coverage**: Per-country pages: united-states, euro-area, united-kingdom, germany, france, italy, spain, japan, china, canada, australia, plus ~20 others. Covers all major releases for the country incl. proprietary indicators (PMIs, Consumer Confidence, ECB/Fed speakers, central-bank rate decisions).
+- **Notes**: **ToS gray area.** Trading Economics' Terms of Use prohibit automated extraction. Their public `guest:guest` HTTP API token was discontinued in 2026 to push everyone to paid plans. Country-page scraping still works technically but is a side-door around their pricing — acceptable for personal research, not for redistribution. The OpenBB `tradingeconomics` provider for `obb.economy.calendar` needs a paid key and is the clean licensed path; this adapter scrapes country pages with no auth.
+
+| kind | declared schema | verified | detail |
+|---|---|:---:|---|
+| `economic_calendar` | `country`, `event`, `period`, `actual`, `previous`, `consensus`, `forecast` | ✅ | rows=297, schema⊆actual=True |
 
 ### `yfinance`
 
@@ -262,6 +274,14 @@ SEC filings + insider transactions + analyst estimates. The paper trail behind a
 Options chain (strikes + expirations) layered onto the underlying's OHLCV. Read implied positioning by where open interest / strike density clusters.
 
 **When to apply**: When the user asks about positioning, gamma exposure, or 'where are the bets', pair OHLCV with the options chain. Strike density at a given expiration is a crude open-interest proxy; per-contract aggregates (separate DataRef with the contract_ticker as name) give the actual historical volume.
+
+### `macro_event_overlay` — *primary_plus_context*
+
+**Kinds**: `economic_calendar`, `ohlcv`, `macro`
+
+Economic calendar (CPI, NFP, ECB / Fed decisions, PMIs) layered against an asset's price chart. Tells the agent which scheduled macro prints to watch and shows where in history past prints printed surprise vs consensus.
+
+**When to apply**: When the user asks about positioning around a macro print (CPI day, NFP, FOMC), pair the relevant economic_calendar table with the asset OHLCV. For long-horizon studies pair with the matching FRED macro series — historical actuals in the same shape as the upcoming forecasts.
 
 ### `event_calendar_overlay` — *primary_plus_context*
 
