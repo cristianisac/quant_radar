@@ -8,6 +8,7 @@ from quant_radar.sources import (
     marketaux_src,
     openbb_src,
     polygon_src,
+    tradingeconomics_src,
     yfinance_src,
 )
 
@@ -21,5 +22,6 @@ __all__ = [
     "marketaux_src",
     "openbb_src",
     "polygon_src",
+    "tradingeconomics_src",
     "yfinance_src",
 ]
