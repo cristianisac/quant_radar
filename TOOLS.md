@@ -84,6 +84,7 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 | `dividends` | `amount`, `dividend_yield`, `frequency`, `payment_date`, `record_date` | ✅ | rows=5, schema⊆actual=True |
 | `splits` | `numerator`, `denominator`, `splitType` | ✅ | rows=5, schema⊆actual=True |
 | `estimates` | `estimated_revenue_avg`, `estimated_eps_avg`, `estimated_ebitda_avg`, `number_analysts_eps` | ✅ | rows=10, schema⊆actual=True |
+| `sec_filings` | `report_type`, `report_url`, `filing_url`, `symbol`, `cik`, `accepted_date` | ✅ | rows=20, schema⊆actual=True |
 
 ### `fred`
 
@@ -107,7 +108,7 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 | kind | declared schema | verified | detail |
 |---|---|:---:|---|
 | `news` | `title`, `url`, `source`, `published_at` | ✅ | non-conforming surface (not ABC) |
-| `news_tone` | `tone` | ✅ | rows=167, schema⊆actual=True |
+| `news_tone` | `tone` | ✅ | rows=166, schema⊆actual=True |
 
 ### `marketaux`
 
@@ -126,13 +127,14 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 - **Auth**: POLYGON_API_KEY env var (free signup at polygon.io)
 - **Rate limit**: 5 calls/min on free tier — tight; cache aggressively
 - **Status**: active
-- **Coverage**: US equities + ETFs + indices + crypto + FX (~70k tickers). Hand-written REST adapter (Polygon not in OpenBB Platform's bundled providers).
+- **Coverage**: US equities + ETFs + indices + crypto + FX (~70k tickers). Per-ticker news with LLM-derived sentiment + reasoning + keywords. Hand-written REST adapter (Polygon not in OpenBB Platform's bundled providers).
 - **Notes**: Equity aggregates use bare ticker; forex aggregates use `C:<pair>` prefix (e.g. C:EURUSD). Adapter handles the prefix internally.
 
 | kind | declared schema | verified | detail |
 |---|---|:---:|---|
 | `ohlcv` | `open`, `high`, `low`, `close`, `volume` | ✅ | rows=496, schema⊆actual=True |
 | `forex` | `open`, `high`, `low`, `close` | ✅ | rows=616, schema⊆actual=True |
+| `ticker_news` | `title`, `author`, `publisher`, `article_url`, `sentiment`, `sentiment_reasoning`, `keywords` | ✅ | rows=50, schema⊆actual=True |
 
 ### `tiingo`
 
@@ -243,6 +245,14 @@ Reddit mention-velocity AND news polarity for the same ticker. The two are ortho
 **Combo tool**: `fetch_attention_and_polarity`
 
 **When to apply**: Always combine when the user asks about sentiment for a specific ticker. Either axis alone can mislead: pure social-sentiment misses the news direction; pure news polarity misses retail attention spikes.
+
+### `regulatory_paper_trail` — *siblings*
+
+**Kinds**: `sec_filings`, `insider`, `estimates`
+
+SEC filings + insider transactions + analyst estimates. The paper trail behind a name: what management actually filed, what insiders actually bought/sold, what analysts actually project.
+
+**When to apply**: When the user asks 'what's the actual regulatory paper trail for X' (often before earnings or after a news spike), pair these three. Insider transactions are a specific Form-4 subset of all filings — the wider sec_filings table catches 10-K / 10-Q / 8-K / etc.
 
 ### `event_calendar_overlay` — *primary_plus_context*
 

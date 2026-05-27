@@ -180,14 +180,98 @@ def describe_ticker(symbol: str) -> dict | None:
     }
 
 
+# --- Per-ticker news ---------------------------------------------------
+#
+# Polygon's /v2/reference/news endpoint serves rich article rows on the
+# free tier: title, author, publisher, article_url, image_url, tickers,
+# keywords, insights (LLM-derived sentiment + sentiment_reasoning).
+# Indexed by published_utc.
+
+
+def fetch_ticker_news(
+    ticker: str, *,
+    start: datetime | None = None, end: datetime | None = None,
+    refresh: bool = False,
+) -> pd.DataFrame:
+    """Per-ticker news for ``ticker`` via /v2/reference/news."""
+
+    key = CacheKey(
+        source=SOURCE, kind="ticker_news",
+        name=ticker.upper(), interval="event",
+    )
+
+    def fetcher(
+        start: datetime | None = None, end: datetime | None = None,
+    ) -> pd.DataFrame:
+        params: dict[str, object] = {
+            "ticker": ticker.upper(),
+            "limit": 50,
+            "order": "desc",
+            "sort": "published_utc",
+            "apiKey": _key(),
+        }
+        if start is not None:
+            params["published_utc.gte"] = start.strftime("%Y-%m-%d")
+        if end is not None:
+            params["published_utc.lte"] = end.strftime("%Y-%m-%d")
+        resp = requests.get(
+            f"{_BASE}/v2/reference/news", params=params, timeout=_TIMEOUT,
+        )
+        resp.raise_for_status()
+        items = (resp.json() or {}).get("results") or []
+        rows: list[dict[str, object]] = []
+        for it in items:
+            try:
+                ts = pd.to_datetime(it.get("published_utc"), utc=True)
+            except Exception:
+                continue
+            pub = it.get("publisher") or {}
+            publisher_name = pub.get("name") if isinstance(pub, dict) else ""
+            insights = it.get("insights") or []
+            # Pull this ticker's insight from the array (Polygon attaches
+            # one entry per tagged ticker per article).
+            this_insight: dict[str, object] = {}
+            for ins in insights:
+                if (ins.get("ticker") or "").upper() == ticker.upper():
+                    this_insight = ins
+                    break
+            rows.append({
+                "timestamp": ts,
+                "title": (it.get("title") or "")[:200],
+                "author": it.get("author") or "",
+                "publisher": publisher_name or "",
+                "article_url": it.get("article_url") or "",
+                "sentiment": (this_insight.get("sentiment") or ""),
+                "sentiment_reasoning": (this_insight.get("sentiment_reasoning") or "")[:200],
+                "keywords": ", ".join(it.get("keywords") or [])[:200],
+            })
+        if not rows:
+            return pd.DataFrame(columns=[
+                "title", "author", "publisher", "article_url",
+                "sentiment", "sentiment_reasoning", "keywords",
+            ])
+        df = pd.DataFrame(rows).set_index("timestamp").sort_index(ascending=False)
+        df.index.name = "timestamp"
+        return df
+
+    return get_or_fetch(
+        key, fetcher, start=start, end=end, refresh=refresh,
+        ttl_seconds=ttl_for_interval("1d"),
+    )
+
+
 class _PolygonSource(Source):
     capability = CATALOG["polygon"]
-    KINDS = ("ohlcv", "forex")
+    KINDS = ("ohlcv", "forex", "ticker_news")
 
     def supports(self, ref: _DataRef) -> bool:
         return ref.source == SOURCE and ref.kind in self.KINDS
 
     def fetch(self, ref: _DataRef, *, refresh: bool = False) -> pd.DataFrame:
+        if ref.kind == "ticker_news":
+            return fetch_ticker_news(
+                ref.name, start=ref.start, end=ref.end, refresh=refresh,
+            )
         return fetch_ohlcv(
             ref.name, interval=ref.interval, kind=ref.kind,
             start=ref.start, end=ref.end, refresh=refresh,

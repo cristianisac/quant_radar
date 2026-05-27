@@ -79,6 +79,29 @@ _KEEP_BY_KIND: dict[str, tuple[str, ...]] = {
 _FUNDAMENTAL_KINDS = {"income", "balance", "cash"}
 _DIVIDEND_KINDS = {"dividends", "splits"}
 _ESTIMATE_KINDS = {"estimates"}
+_FILINGS_KINDS = {"sec_filings"}
+
+
+def _fetch_sec_filings(
+    obb_module, provider: str, symbol: str,
+) -> pd.DataFrame:
+    """SEC filings list for ``symbol`` via the OpenBB filings endpoint.
+
+    FMP and SEC are both free providers. SEC's schema is richer
+    (accession_number, complete_submission_url, primary_doc); FMP's
+    is leaner but covers the essentials (filing_date, report_type,
+    report_url, accepted_date). We use the provider passed in.
+    """
+    result = obb_module.equity.fundamental.filings(
+        symbol=symbol, provider=provider, limit=20,
+    )
+    df = result.to_df()
+    if df.empty:
+        return df
+    df["filing_date"] = pd.to_datetime(df["filing_date"], utc=True)
+    df = df.set_index("filing_date").sort_index(ascending=False)
+    df.index.name = "timestamp"
+    return df
 
 
 def _fetch_corporate_event(
@@ -187,6 +210,8 @@ def _fetch_via_openbb(
         df = _fetch_corporate_event(obb, provider, kind, symbol)
     elif kind in _ESTIMATE_KINDS:
         df = _fetch_estimates(obb, provider, symbol)
+    elif kind in _FILINGS_KINDS:
+        df = _fetch_sec_filings(obb, provider, symbol)
     else:
         df = None
 
@@ -320,6 +345,7 @@ class _FMPSource(_OpenBBOHLCVSource):
         "ohlcv", "forex", "crypto",
         "income", "balance", "cash",
         "dividends", "splits", "estimates",
+        "sec_filings",
     )
 
 
