@@ -121,10 +121,17 @@ CATALOG: dict[str, SourceCapability] = {
         ],
         intervals=["1m", "5m", "15m", "1h", "1d", "1w", "1mo", "quarter", "annual"],
         history="Equities from listing date (1985+ for major US tickers). Fundamentals from 1985+. Daily EOD reliable. Intraday + forex on free tier with rate limits.",
-        coverage="US equities + global ADRs + ETFs (~40k). Forex majors. Income statement / balance sheet / cash flow for ~30k tickers, quarterly + annual. Adapter wraps OpenBB Platform's `fmp` provider.",
+        coverage="US equities + global ADRs + ETFs (~40k). Forex majors. Income statement / balance sheet / cash flow for ~30k tickers, quarterly + annual. Major US indices (^GSPC, ^DJI, ^IXIC, ^VIX) via the same OHLCV endpoint. Crypto USD majors. Futures NOT supported on free tier (use yfinance =F suffix for those). Adapter wraps OpenBB Platform's `fmp` provider.",
         auth="FMP_API_KEY env var (free signup at financialmodelingprep.com)",
         rate_limit="250 req/day on free tier — modest; cache-first is essential",
-        examples=["AAPL", "MSFT", "SPY", "TSLA", "NVDA", "EURUSD", "GBPUSD", "BTCUSD", "ETHUSD"],
+        examples=[
+            "AAPL", "MSFT", "SPY", "TSLA", "NVDA",
+            "EURUSD", "GBPUSD",
+            "BTCUSD", "ETHUSD",
+            # Major US indices — verified live (2026-05-27): all four
+            # serve via obb.equity.price.historical on free tier.
+            "^GSPC", "^DJI", "^IXIC", "^VIX",
+        ],
         schema={
             "ohlcv": ["open", "high", "low", "close", "volume"],
             "forex": ["open", "high", "low", "close"],

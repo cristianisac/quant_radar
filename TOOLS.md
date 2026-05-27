@@ -70,7 +70,7 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 - **Auth**: FMP_API_KEY env var (free signup at financialmodelingprep.com)
 - **Rate limit**: 250 req/day on free tier — modest; cache-first is essential
 - **Status**: active
-- **Coverage**: US equities + global ADRs + ETFs (~40k). Forex majors. Income statement / balance sheet / cash flow for ~30k tickers, quarterly + annual. Adapter wraps OpenBB Platform's `fmp` provider.
+- **Coverage**: US equities + global ADRs + ETFs (~40k). Forex majors. Income statement / balance sheet / cash flow for ~30k tickers, quarterly + annual. Major US indices (^GSPC, ^DJI, ^IXIC, ^VIX) via the same OHLCV endpoint. Crypto USD majors. Futures NOT supported on free tier (use yfinance =F suffix for those). Adapter wraps OpenBB Platform's `fmp` provider.
 - **Notes**: OHLCV via obb.equity.price.historical; forex via obb.currency.price.historical. Fundamentals via obb.equity.fundamental.income/balance/cash with period='quarter'|'annual'. Adapter sets the DataFrame index to period_ending so each row is anchored to its fiscal period end-date.
 
 | kind | declared schema | verified | detail |
@@ -108,7 +108,7 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 | kind | declared schema | verified | detail |
 |---|---|:---:|---|
 | `news` | `title`, `url`, `source`, `published_at` | ✅ | non-conforming surface (not ABC) |
-| `news_tone` | `tone` | ✅ | rows=166, schema⊆actual=True |
+| `news_tone` | `tone` | ❌ | HTTPError: 429 Client Error: Too Many Requests for url: https://api.gdeltproject.org/api/v2/doc/doc?query=Bitcoin&mode=timelinetone&format=json&timespan=7d |
 
 ### `marketaux`
 
