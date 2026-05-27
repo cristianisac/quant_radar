@@ -45,7 +45,7 @@ from __future__ import annotations
 
 import os
 import re
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pandas as pd
@@ -235,6 +235,22 @@ def _empty_frame() -> pd.DataFrame:
     return pd.DataFrame(columns=_SCHEMA_COLS)
 
 
+def _current_week_bounds() -> tuple[datetime, datetime]:
+    """Monday 00:00 UTC → Sunday 23:59:59.999999 UTC of the current week.
+
+    Economic calendars default to "this week" semantics — events earlier
+    in the same week are still relevant (the actual values are now
+    known and useful context), and the user usually means
+    Mon→Sun-of-this-week when they say "the calendar" without a window.
+    """
+    now = datetime.now(UTC)
+    today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    # weekday(): Mon=0, Sun=6
+    monday = today - timedelta(days=today.weekday())
+    sunday_end = monday + timedelta(days=6, hours=23, minutes=59, seconds=59, microseconds=999999)
+    return monday, sunday_end
+
+
 def fetch_economic_calendar(
     country: str = "united-states", *,
     start: datetime | None = None, end: datetime | None = None,
@@ -242,10 +258,11 @@ def fetch_economic_calendar(
 ) -> pd.DataFrame:
     """Trading Economics calendar for ``country`` slug.
 
-    Returns the full page (typically ~4 weeks). When ``start``/``end``
-    are supplied, filters in-memory to that window. Default scope is
-    "the entire page" so the agent can ask for "current week" by
-    passing today + 7d as the window.
+    **Default window when no start/end is given**: the current calendar
+    week (Monday 00:00 → Sunday 23:59 UTC). Events already released
+    earlier in the same week are included — their actuals are real,
+    useful context. Pass explicit ``start``/``end`` for any other window
+    (still bounded by the ~4 weeks Trading Economics renders).
     """
     key = CacheKey(
         source=SOURCE, kind="economic_calendar",
@@ -267,15 +284,22 @@ def fetch_economic_calendar(
         ttl_seconds=TTL_INTRADAY_SEC,
     )
 
-    # Post-fetch slicing — cache always holds the full page.
     if df.empty:
         return df
-    if start is not None:
-        ts = pd.Timestamp(start)
+
+    # Post-fetch slicing — cache always holds the full page. When the
+    # caller didn't pass any window, fall back to the current calendar
+    # week (Mon→Sun). Otherwise honor the explicit window.
+    eff_start, eff_end = start, end
+    if eff_start is None and eff_end is None:
+        eff_start, eff_end = _current_week_bounds()
+
+    if eff_start is not None:
+        ts = pd.Timestamp(eff_start)
         ts = ts.tz_convert("UTC") if ts.tzinfo else ts.tz_localize("UTC")
         df = df[df.index >= ts]
-    if end is not None:
-        te_ = pd.Timestamp(end)
+    if eff_end is not None:
+        te_ = pd.Timestamp(eff_end)
         te_ = te_.tz_convert("UTC") if te_.tzinfo else te_.tz_localize("UTC")
         df = df[df.index <= te_]
     return df
