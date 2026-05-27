@@ -15,7 +15,7 @@ export PATH := $(DOCKER_BIN):$(PATH)
 .PHONY: install-ide \
         docker-build docker-check docker-lint docker-type docker-test \
         docker-shell docker-api app dev \
-        ui-install ui-build ui-typecheck visual-e2e
+        ui-install ui-build ui-typecheck visual-e2e tools-doc
 
 install-ide:
 	uv venv
@@ -106,3 +106,14 @@ ui-typecheck:
 # Chromium (~200MB, host-only — no Docker bloat).
 visual-e2e:
 	@bash scripts/visual_e2e.sh
+
+# Regenerate TOOLS.md from the live registry (CATALOG + tools.__all__ +
+# kind_relationships + kind_coverage). Run after any change to those
+# registries. The committed TOOLS.md is the single source of truth for
+# "what does this codebase expose to the agent".
+tools-doc:
+	$(DOCKER) run --rm $(HARDEN) $(ENV_FILE_ARG) \
+		-v "$$(pwd)/scripts:/app/scripts:ro" \
+		quant-radar:dev \
+		python scripts/generate_tools_doc.py > TOOLS.md
+	@echo "regenerated TOOLS.md ($$(wc -l < TOOLS.md) lines)"

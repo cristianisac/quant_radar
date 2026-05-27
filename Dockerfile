@@ -37,7 +37,7 @@ RUN useradd --create-home --shell /bin/bash radar
 USER radar
 ENV PATH="/home/radar/.local/bin:${PATH}"
 
-COPY --chown=radar:radar pyproject.toml README.md SKILL.md ./
+COPY --chown=radar:radar pyproject.toml README.md SKILL.md TOOLS.md ./
 COPY --chown=radar:radar quant_radar/ ./quant_radar/
 
 # Bake the React bundle so FastAPI can serve it at "/" via StaticFiles.
