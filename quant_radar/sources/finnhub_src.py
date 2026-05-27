@@ -307,12 +307,147 @@ def fetch_ipo_calendar(
     )
 
 
+# --- Analyst recommendation trends + insider-sentiment MSPR -------------
+#
+# Recommendation returns per-period analyst counts (buy/hold/sell/
+# strongBuy/strongSell). Insider-sentiment returns Monthly Share
+# Purchase Ratio (MSPR) — a normalized signal of net insider activity.
+# Both are time-series. The news-sentiment + price-target endpoints
+# were 403 on the free tier in our probe (2026-05-27).
+
+
+def fetch_recommendation_trend(
+    symbol: str, *,
+    start: datetime | None = None, end: datetime | None = None,
+    refresh: bool = False,
+) -> pd.DataFrame:
+    """Per-period analyst rating counts.
+
+    Returned columns: strong_buy, buy, hold, sell, strong_sell, symbol.
+    Indexed by the period date (UTC midnight).
+    """
+    from quant_radar.cache import CacheKey, get_or_fetch
+    from quant_radar.sources.base import TTL_DAILY_SEC
+
+    key = CacheKey(
+        source=SOURCE, kind="recommendation",
+        name=symbol.upper(), interval="monthly",
+    )
+
+    def fetcher(
+        start: datetime | None = None, end: datetime | None = None,
+    ) -> pd.DataFrame:
+        resp = requests.get(
+            f"{_BASE}/stock/recommendation",
+            params={"symbol": symbol.upper(), "token": _key()},
+            timeout=_TIMEOUT,
+        )
+        resp.raise_for_status()
+        items = resp.json() or []
+        rows: list[dict[str, Any]] = []
+        for it in items:
+            try:
+                ts = pd.to_datetime(it.get("period"), utc=True)
+            except Exception:
+                continue
+            rows.append({
+                "timestamp": ts,
+                "strong_buy": int(it.get("strongBuy") or 0),
+                "buy": int(it.get("buy") or 0),
+                "hold": int(it.get("hold") or 0),
+                "sell": int(it.get("sell") or 0),
+                "strong_sell": int(it.get("strongSell") or 0),
+                "symbol": it.get("symbol") or "",
+            })
+        if not rows:
+            return pd.DataFrame(columns=[
+                "strong_buy", "buy", "hold", "sell", "strong_sell", "symbol",
+            ])
+        df = pd.DataFrame(rows).set_index("timestamp").sort_index()
+        df.index.name = "timestamp"
+        return df
+
+    return get_or_fetch(
+        key, fetcher, start=start, end=end, refresh=refresh,
+        ttl_seconds=TTL_DAILY_SEC,
+    )
+
+
+def fetch_insider_sentiment(
+    symbol: str, *,
+    start: datetime | None = None, end: datetime | None = None,
+    refresh: bool = False,
+) -> pd.DataFrame:
+    """Monthly insider sentiment (MSPR) for ``symbol``.
+
+    MSPR (Monthly Share Purchase Ratio) is Finnhub's normalized score
+    of net insider activity: ``net_shares_change / total_shares_traded``,
+    clamped roughly to [-1, +1]. Positive = net buying; negative = net
+    selling. Returned columns: change (raw net shares), mspr, symbol.
+    Indexed by month-end (year-month synthesized into a UTC timestamp).
+    """
+    from quant_radar.cache import CacheKey, get_or_fetch
+    from quant_radar.sources.base import TTL_DAILY_SEC
+
+    key = CacheKey(
+        source=SOURCE, kind="insider_sentiment",
+        name=symbol.upper(), interval="monthly",
+    )
+
+    def fetcher(
+        start: datetime | None = None, end: datetime | None = None,
+    ) -> pd.DataFrame:
+        from datetime import timedelta
+        if start is None:
+            start = datetime.now(UTC) - timedelta(days=365)
+        if end is None:
+            end = datetime.now(UTC)
+        resp = requests.get(
+            f"{_BASE}/stock/insider-sentiment",
+            params={
+                "symbol": symbol.upper(),
+                "from": start.date().isoformat(),
+                "to": end.date().isoformat(),
+                "token": _key(),
+            },
+            timeout=_TIMEOUT,
+        )
+        resp.raise_for_status()
+        items = (resp.json() or {}).get("data") or []
+        rows: list[dict[str, Any]] = []
+        for it in items:
+            year = int(it.get("year") or 0)
+            month = int(it.get("month") or 0)
+            if not (year and month):
+                continue
+            ts = pd.Timestamp(year=year, month=month, day=1, tz=UTC)
+            rows.append({
+                "timestamp": ts,
+                "change": int(it.get("change") or 0),
+                "mspr": float(it.get("mspr") or 0.0),
+                "symbol": it.get("symbol") or "",
+            })
+        if not rows:
+            return pd.DataFrame(columns=["change", "mspr", "symbol"])
+        df = pd.DataFrame(rows).set_index("timestamp").sort_index()
+        df.index.name = "timestamp"
+        return df
+
+    return get_or_fetch(
+        key, fetcher, start=start, end=end, refresh=refresh,
+        ttl_seconds=TTL_DAILY_SEC,
+    )
+
+
 def _register() -> None:  # pragma: no cover
     from quant_radar.cards.spec import DataRef as _DataRef
     from quant_radar.sources.base_source import Source, register_source
     from quant_radar.sources.catalog import CATALOG
 
-    _ABC_KINDS = {"insider", "earnings_calendar", "ipo_calendar"}
+    _ABC_KINDS = {
+        "insider", "earnings_calendar", "ipo_calendar",
+        "recommendation", "insider_sentiment",
+    }
 
     class _FinnhubSource(Source):
         """Single ABC adapter dispatching across all DataFrame kinds.
@@ -337,6 +472,14 @@ def _register() -> None:  # pragma: no cover
             if ref.kind == "ipo_calendar":
                 return fetch_ipo_calendar(
                     ref.name or "30d", start=ref.start, end=ref.end, refresh=refresh,
+                )
+            if ref.kind == "recommendation":
+                return fetch_recommendation_trend(
+                    ref.name, start=ref.start, end=ref.end, refresh=refresh,
+                )
+            if ref.kind == "insider_sentiment":
+                return fetch_insider_sentiment(
+                    ref.name, start=ref.start, end=ref.end, refresh=refresh,
                 )
             raise ValueError(f"finnhub: unsupported kind {ref.kind!r}")
 

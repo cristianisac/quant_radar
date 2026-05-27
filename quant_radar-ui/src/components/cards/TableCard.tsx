@@ -48,6 +48,8 @@ const PREFERRED_HEADLINE: Record<string, string[]> = {
   insider: ["transaction_price", "share", "transaction_code", "insider_name"],
   earnings_calendar: ["symbol", "eps_estimate", "revenue_estimate", "hour"],
   ipo_calendar: ["symbol", "company_name", "exchange", "price"],
+  recommendation: ["strong_buy", "buy", "hold", "sell", "strong_sell"],
+  insider_sentiment: ["mspr", "change", "symbol"],
 };
 
 function pickHeadlineCols(kind: string, allCols: string[]): string[] {

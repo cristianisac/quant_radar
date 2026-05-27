@@ -54,14 +54,16 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 - **Rate limit**: 60 calls/min on the free tier
 - **Status**: active
 - **Coverage**: curated finance news plus company-specific (US tickers). Insider transactions cover US-listed equities, one row per Form-4 filing.
-- **Notes**: Calendars are window-scoped — ref.name accepts '7d' / '30d' / '60d' / '90d' (default 30d). Economic calendar is paid on every free provider we have keys for (FMP 402, tradingeconomics requires paid key) — deferred. ETF holdings + analyst recommendation time-series also free on Finnhub, but ETF holdings is paywalled (verified 2026-05-26). Recommendation trends ship in phase 2b.4.
+- **Notes**: Calendars are window-scoped — ref.name accepts '7d' / '30d' / '60d' / '90d' (default 30d). Economic calendar is paid on every free provider we have keys for (FMP 402, tradingeconomics requires paid key) — deferred. ETF holdings + analyst recommendation time-series also free on Finnhub, but ETF holdings is paywalled (verified 2026-05-26). Recommendation trends + insider-sentiment MSPR ship in phase 2b.4. News-sentiment + price-target endpoints are 403 on the free tier (verified 2026-05-27).
 
 | kind | declared schema | verified | detail |
 |---|---|:---:|---|
 | `news` | `title`, `url`, `source`, `published_at`, `summary` | ✅ | non-conforming surface (not ABC) |
-| `insider` | `transaction_price`, `share`, `change`, `transaction_code`, `insider_name`, `filing_date`, `is_derivative`, `source` | ✅ | non-conforming surface (not ABC) |
-| `earnings_calendar` | `symbol`, `eps_estimate`, `eps_actual`, `revenue_estimate`, `revenue_actual`, `hour`, `quarter`, `year` | ✅ | non-conforming surface (not ABC) |
+| `insider` | `transaction_price`, `share`, `change`, `transaction_code`, `insider_name`, `filing_date`, `is_derivative`, `source` | ✅ | rows=115, schema⊆actual=True |
+| `earnings_calendar` | `symbol`, `eps_estimate`, `eps_actual`, `revenue_estimate`, `revenue_actual`, `hour`, `quarter`, `year` | ✅ | rows=409, schema⊆actual=True |
 | `ipo_calendar` | `symbol`, `company_name`, `exchange`, `number_of_shares`, `price`, `status`, `total_shares_value` | ❌ | rows=0, schema⊆actual=True |
+| `recommendation` | `strong_buy`, `buy`, `hold`, `sell`, `strong_sell`, `symbol` | ✅ | rows=4, schema⊆actual=True |
+| `insider_sentiment` | `change`, `mspr`, `symbol` | ✅ | rows=11, schema⊆actual=True |
 
 ### `fmp`
 
@@ -104,7 +106,7 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 | kind | declared schema | verified | detail |
 |---|---|:---:|---|
 | `news` | `title`, `url`, `source`, `published_at` | ✅ | non-conforming surface (not ABC) |
-| `news_tone` | `tone` | ✅ | rows=166, schema⊆actual=True |
+| `news_tone` | `tone` | ✅ | rows=167, schema⊆actual=True |
 
 ### `marketaux`
 
@@ -263,11 +265,19 @@ Forward analyst estimates (revenue / EPS / EBITDA ranges) vs the historical fund
 
 **When to apply**: Pair forward estimates (kind='estimates') with the most recent income statement when the user asks about consensus vs reality. Balance + cash become relevant when the question is about ability-to-deliver, not just earnings power.
 
+### `analyst_consensus` — *orthogonal*
+
+**Kinds**: `recommendation`, `sentiment`, `social_sentiment`
+
+Monthly analyst recommendation counts (strong_buy / buy / hold / sell / strong_sell) plotted as a sentiment signal alongside news polarity and social attention.
+
+**When to apply**: Analyst consensus shifts slowly but reliably. When recommendation trend is improving (more buy / fewer sell) but social_sentiment is loud-negative, you're watching a professional / retail divergence. Surface both alongside the news polarity for the fullest picture.
+
 ### `insider_ownership` — *orthogonal*
 
-**Kinds**: `insider`, `sentiment`, `social_sentiment`
+**Kinds**: `insider`, `insider_sentiment`, `sentiment`, `social_sentiment`
 
-Insider transactions (Form-4 filings) as a behavioral signal. Pair with sentiment + social_sentiment to compare what insiders are DOING with what news / Reddit are SAYING.
+Insider transactions (Form-4 filings) + monthly MSPR + sentiment + social signals. Compare what insiders are DOING with what news / Reddit are SAYING. MSPR (kind='insider_sentiment') normalizes net buying/selling to [-1, +1]; insider (kind='insider') gives raw Form-4 transaction detail.
 
 **When to apply**: Insiders selling into a news/social-sentiment spike is a classic divergence — the loudest convictions often coincide with the people closest to the data quietly cashing out. Use insider table alongside the attention+polarity combo for the fullest picture.
 
