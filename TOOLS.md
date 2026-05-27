@@ -53,11 +53,13 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 - **Auth**: FINNHUB_API_KEY env var (free signup at finnhub.io)
 - **Rate limit**: 60 calls/min on the free tier
 - **Status**: active
-- **Coverage**: curated finance news plus company-specific (US tickers)
+- **Coverage**: curated finance news plus company-specific (US tickers). Insider transactions cover US-listed equities, one row per Form-4 filing.
+- **Notes**: ETF holdings + analyst recommendation time-series are also free, but ETF holdings is paywalled (verified 2026-05-26). Recommendation trends ship in phase 2b.4.
 
 | kind | declared schema | verified | detail |
 |---|---|:---:|---|
-| `news` | `title`, `url`, `source`, `published_at`, `summary` | ❌ | not probed |
+| `news` | `title`, `url`, `source`, `published_at`, `summary` | ✅ | non-conforming surface (not ABC) |
+| `insider` | `transaction_price`, `share`, `change`, `transaction_code`, `insider_name`, `filing_date`, `is_derivative`, `source` | ✅ | rows=115, schema⊆actual=True |
 
 ### `fmp`
 
@@ -74,6 +76,9 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 | `income` | `fiscal_period`, `fiscal_year`, `revenue`, `gross_profit`, `bottom_line_net_income` | ✅ | rows=5, schema⊆actual=True |
 | `balance` | `fiscal_period`, `fiscal_year`, `total_assets`, `total_liabilities`, `total_debt` | ✅ | rows=5, schema⊆actual=True |
 | `cash` | `fiscal_period`, `fiscal_year`, `operating_cash_flow`, `free_cash_flow` | ✅ | rows=5, schema⊆actual=True |
+| `dividends` | `amount`, `dividend_yield`, `frequency`, `payment_date`, `record_date` | ✅ | rows=5, schema⊆actual=True |
+| `splits` | `numerator`, `denominator`, `splitType` | ✅ | rows=5, schema⊆actual=True |
+| `estimates` | `estimated_revenue_avg`, `estimated_eps_avg`, `estimated_ebitda_avg`, `number_analysts_eps` | ✅ | rows=10, schema⊆actual=True |
 
 ### `fred`
 
@@ -97,7 +102,7 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 | kind | declared schema | verified | detail |
 |---|---|:---:|---|
 | `news` | `title`, `url`, `source`, `published_at` | ✅ | non-conforming surface (not ABC) |
-| `news_tone` | `tone` | ✅ | rows=166, schema⊆actual=True |
+| `news_tone` | `tone` | ✅ | rows=167, schema⊆actual=True |
 
 ### `marketaux`
 
@@ -231,6 +236,30 @@ Reddit mention-velocity AND news polarity for the same ticker. The two are ortho
 **Combo tool**: `fetch_attention_and_polarity`
 
 **When to apply**: Always combine when the user asks about sentiment for a specific ticker. Either axis alone can mislead: pure social-sentiment misses the news direction; pure news polarity misses retail attention spikes.
+
+### `shareholder_returns` — *siblings*
+
+**Kinds**: `dividends`, `splits`
+
+Dividends + splits give the full picture of cash + structural returns to shareholders over time. Dividends show the cash yield trajectory; splits show share-count history (relevant for adjusted-vs-raw price comparisons).
+
+**When to apply**: When the user asks about a ticker's payout history or wants to understand a stock's return composition, create both as table cards. For a card-view preview, dividends is usually the headline; splits is a context table that's rarely the primary focus.
+
+### `actuals_vs_estimates` — *primary_plus_context*
+
+**Kinds**: `estimates`, `income`, `balance`, `cash`
+
+Forward analyst estimates (revenue / EPS / EBITDA ranges) vs the historical fundamentals trio. Useful for 'is the company beating or missing'.
+
+**When to apply**: Pair forward estimates (kind='estimates') with the most recent income statement when the user asks about consensus vs reality. Balance + cash become relevant when the question is about ability-to-deliver, not just earnings power.
+
+### `insider_ownership` — *orthogonal*
+
+**Kinds**: `insider`, `sentiment`, `social_sentiment`
+
+Insider transactions (Form-4 filings) as a behavioral signal. Pair with sentiment + social_sentiment to compare what insiders are DOING with what news / Reddit are SAYING.
+
+**When to apply**: Insiders selling into a news/social-sentiment spike is a classic divergence — the loudest convictions often coincide with the people closest to the data quietly cashing out. Use insider table alongside the attention+polarity combo for the fullest picture.
 
 ### `fundamentals_triplet` — *siblings*
 

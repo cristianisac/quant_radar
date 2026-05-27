@@ -76,6 +76,74 @@ _KEEP_BY_KIND: dict[str, tuple[str, ...]] = {
 }
 
 _FUNDAMENTAL_KINDS = {"income", "balance", "cash"}
+_DIVIDEND_KINDS = {"dividends", "splits"}
+_ESTIMATE_KINDS = {"estimates"}
+
+
+def _fetch_corporate_event(
+    obb_module, provider: str, kind: str, symbol: str,
+) -> pd.DataFrame:
+    """Fetch dividends or splits — corporate-action events.
+
+    Both endpoints return per-event rows. We anchor the index on the
+    most semantic timestamp per kind:
+    - dividends: ex_dividend_date
+    - splits: the upstream date column (string in some providers)
+    """
+    if kind == "dividends":
+        # FMP free tier caps dividends limit at 5.
+        result = obb_module.equity.fundamental.dividends(
+            symbol=symbol, provider=provider, limit=5,
+        )
+        df = result.to_df()
+        if df.empty:
+            return df
+        df["ex_dividend_date"] = pd.to_datetime(df["ex_dividend_date"], utc=True)
+        df = df.set_index("ex_dividend_date").sort_index(ascending=False)
+    else:  # splits
+        # historical_splits doesn't have a documented free-tier cap;
+        # 20 worked in the live probe but mirror the conservative
+        # limit=5 anyway to stay under tier-paranoia.
+        result = obb_module.equity.fundamental.historical_splits(
+            symbol=symbol, provider=provider, limit=5,
+        )
+        df = result.to_df()
+        if df.empty:
+            return df
+        # historical_splits returns a string date index; coerce + lift to col.
+        df = df.reset_index()
+        # The reset column is "index" containing date strings.
+        date_col = "index" if "index" in df.columns else df.columns[0]
+        df[date_col] = pd.to_datetime(df[date_col], utc=True)
+        df = df.rename(columns={date_col: "split_date"}).set_index("split_date")
+        df = df.sort_index(ascending=False)
+    df.index.name = "timestamp"
+    return df
+
+
+def _fetch_estimates(
+    obb_module, provider: str, symbol: str,
+) -> pd.DataFrame:
+    """Forward analyst estimates — revenue / EPS / EBITDA ranges.
+
+    Indexed by the estimated fiscal-period-end date so estimates align
+    naturally on the same time axis as actual fundamentals.
+    """
+    # FMP free tier caps estimates limit at 10.
+    result = obb_module.equity.estimates.historical(
+        symbol=symbol, provider=provider, limit=10,
+    )
+    df = result.to_df()
+    if df.empty:
+        return df
+    # OpenBB returns a string-date index; lift + coerce.
+    df = df.reset_index()
+    date_col = "index" if "index" in df.columns else df.columns[0]
+    df[date_col] = pd.to_datetime(df[date_col], utc=True)
+    df = df.rename(columns={date_col: "estimate_date"}).set_index("estimate_date")
+    df = df.sort_index(ascending=False)
+    df.index.name = "timestamp"
+    return df
 
 
 def _fetch_fundamentals(
@@ -114,6 +182,14 @@ def _fetch_via_openbb(
 
     if kind in _FUNDAMENTAL_KINDS:
         df = _fetch_fundamentals(obb, provider, kind, symbol, interval)
+    elif kind in _DIVIDEND_KINDS:
+        df = _fetch_corporate_event(obb, provider, kind, symbol)
+    elif kind in _ESTIMATE_KINDS:
+        df = _fetch_estimates(obb, provider, symbol)
+    else:
+        df = None
+
+    if df is not None:
         if not df.empty and (start is not None or end is not None):
             if start is not None:
                 df = df[df.index >= pd.Timestamp(start, tz="UTC")]
@@ -233,8 +309,15 @@ class _OpenBBOHLCVSource(Source):
 class _FMPSource(_OpenBBOHLCVSource):
     PROVIDER = "fmp"
     capability = CATALOG["fmp"]
-    # FMP free tier covers OHLCV + forex + full fundamentals trio.
-    KINDS = ("ohlcv", "forex", "income", "balance", "cash")
+    # FMP free tier coverage (live-verified): OHLCV + forex + fundamentals
+    # trio + dividends + splits + forward analyst estimates. Insider
+    # trading + ETF holdings are 402 paid on free tier — see Finnhub
+    # adapter for insider trading; ETF holdings deferred entirely.
+    KINDS = (
+        "ohlcv", "forex",
+        "income", "balance", "cash",
+        "dividends", "splits", "estimates",
+    )
 
 
 class _TiingoSource(_OpenBBOHLCVSource):

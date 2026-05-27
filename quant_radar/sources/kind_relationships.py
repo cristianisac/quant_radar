@@ -47,6 +47,57 @@ KIND_RELATIONSHIPS: dict[str, dict[str, Any]] = {
             "polarity misses retail attention spikes."
         ),
     },
+    "shareholder_returns": {
+        "description": (
+            "Dividends + splits give the full picture of cash + structural "
+            "returns to shareholders over time. Dividends show the cash "
+            "yield trajectory; splits show share-count history (relevant "
+            "for adjusted-vs-raw price comparisons)."
+        ),
+        "kinds": ["dividends", "splits"],
+        "relationship": "siblings",
+        "combo_tool": None,
+        "rationale": (
+            "When the user asks about a ticker's payout history or wants "
+            "to understand a stock's return composition, create both as "
+            "table cards. For a card-view preview, dividends is usually "
+            "the headline; splits is a context table that's rarely the "
+            "primary focus."
+        ),
+    },
+    "actuals_vs_estimates": {
+        "description": (
+            "Forward analyst estimates (revenue / EPS / EBITDA ranges) "
+            "vs the historical fundamentals trio. Useful for 'is the "
+            "company beating or missing'."
+        ),
+        "kinds": ["estimates", "income", "balance", "cash"],
+        "relationship": "primary_plus_context",
+        "combo_tool": None,
+        "rationale": (
+            "Pair forward estimates (kind='estimates') with the most "
+            "recent income statement when the user asks about consensus "
+            "vs reality. Balance + cash become relevant when the question "
+            "is about ability-to-deliver, not just earnings power."
+        ),
+    },
+    "insider_ownership": {
+        "description": (
+            "Insider transactions (Form-4 filings) as a behavioral signal. "
+            "Pair with sentiment + social_sentiment to compare what "
+            "insiders are DOING with what news / Reddit are SAYING."
+        ),
+        "kinds": ["insider", "sentiment", "social_sentiment"],
+        "relationship": "orthogonal",
+        "combo_tool": None,
+        "rationale": (
+            "Insiders selling into a news/social-sentiment spike is a "
+            "classic divergence — the loudest convictions often coincide "
+            "with the people closest to the data quietly cashing out. "
+            "Use insider table alongside the attention+polarity combo "
+            "for the fullest picture."
+        ),
+    },
     "fundamentals_triplet": {
         "description": (
             "Income statement + balance sheet + cash flow for a ticker. "
