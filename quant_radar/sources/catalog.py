@@ -296,8 +296,11 @@ CATALOG: dict[str, SourceCapability] = {
     ),
     "finnhub": SourceCapability(
         name="finnhub",
-        kinds=["news", "insider", "earnings_calendar", "ipo_calendar"],
-        intervals=["news: real-time / per-window; insider: rolling 12mo; calendars: forward-window scoped"],
+        kinds=[
+            "news", "insider", "earnings_calendar", "ipo_calendar",
+            "recommendation", "insider_sentiment",
+        ],
+        intervals=["news: real-time / per-window; insider: rolling 12mo; calendars: forward-window scoped; recommendation/insider_sentiment: monthly"],
         history=(
             "Free tier: company news ~1 year back per call; general news "
             "rolling real-time; insider-transactions rolling 12 months."
@@ -329,6 +332,15 @@ CATALOG: dict[str, SourceCapability] = {
                 "number_of_shares", "price", "status",
                 "total_shares_value",
             ],
+            # Analyst rating snapshot, one row per month. Counts in each
+            # bucket; sum of all five = total analysts covering the name.
+            "recommendation": [
+                "strong_buy", "buy", "hold", "sell", "strong_sell", "symbol",
+            ],
+            # Monthly insider-sentiment via MSPR (Monthly Share Purchase
+            # Ratio). Positive = net buying, negative = net selling. Raw
+            # `change` is net shares-traded sign.
+            "insider_sentiment": ["change", "mspr", "symbol"],
         },
         notes=(
             "Calendars are window-scoped — ref.name accepts '7d' / '30d' "
@@ -337,7 +349,9 @@ CATALOG: dict[str, SourceCapability] = {
             "tradingeconomics requires paid key) — deferred. ETF "
             "holdings + analyst recommendation time-series also free on "
             "Finnhub, but ETF holdings is paywalled (verified 2026-05-26). "
-            "Recommendation trends ship in phase 2b.4."
+            "Recommendation trends + insider-sentiment MSPR ship in "
+            "phase 2b.4. News-sentiment + price-target endpoints are "
+            "403 on the free tier (verified 2026-05-27)."
         ),
     ),
 }

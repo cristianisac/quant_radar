@@ -97,13 +97,36 @@ KIND_RELATIONSHIPS: dict[str, dict[str, Any]] = {
             "is about ability-to-deliver, not just earnings power."
         ),
     },
+    "analyst_consensus": {
+        "description": (
+            "Monthly analyst recommendation counts (strong_buy / buy / "
+            "hold / sell / strong_sell) plotted as a sentiment signal "
+            "alongside news polarity and social attention."
+        ),
+        "kinds": ["recommendation", "sentiment", "social_sentiment"],
+        "relationship": "orthogonal",
+        "combo_tool": None,
+        "rationale": (
+            "Analyst consensus shifts slowly but reliably. When "
+            "recommendation trend is improving (more buy / fewer sell) "
+            "but social_sentiment is loud-negative, you're watching a "
+            "professional / retail divergence. Surface both alongside "
+            "the news polarity for the fullest picture."
+        ),
+    },
     "insider_ownership": {
         "description": (
-            "Insider transactions (Form-4 filings) as a behavioral signal. "
-            "Pair with sentiment + social_sentiment to compare what "
-            "insiders are DOING with what news / Reddit are SAYING."
+            "Insider transactions (Form-4 filings) + monthly MSPR + "
+            "sentiment + social signals. Compare what insiders are "
+            "DOING with what news / Reddit are SAYING. MSPR (kind="
+            "'insider_sentiment') normalizes net buying/selling to "
+            "[-1, +1]; insider (kind='insider') gives raw Form-4 "
+            "transaction detail."
         ),
-        "kinds": ["insider", "sentiment", "social_sentiment"],
+        "kinds": [
+            "insider", "insider_sentiment",
+            "sentiment", "social_sentiment",
+        ],
         "relationship": "orthogonal",
         "combo_tool": None,
         "rationale": (
