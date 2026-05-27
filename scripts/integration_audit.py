@@ -290,8 +290,9 @@ def _example_for_kind(cap, kind: str) -> str | None:
     """Heuristic: pick an example from cap.examples that fits ``kind``.
 
     - forex: looks for a 6-letter all-uppercase ticker (EURUSD, GBPUSD)
-    - ohlcv / macro / others: anything that doesn't match the forex pattern,
-      falling back to the first example
+    - crypto: looks for *USD / *USDT / *USDC suffix
+    - ohlcv / macro / others: anything that doesn't match the
+      currency/crypto patterns, falling back to the first example
     """
     examples = cap.examples or []
     if not examples:
@@ -299,8 +300,26 @@ def _example_for_kind(cap, kind: str) -> str | None:
     if kind == "forex":
         fx = [e for e in examples if len(e) == 6 and e.isalpha() and e.isupper()]
         return fx[0] if fx else None
-    non_fx = [e for e in examples if not (len(e) == 6 and e.isalpha() and e.isupper())]
-    return non_fx[0] if non_fx else examples[0]
+    if kind == "crypto":
+        # FMP / Tiingo crypto uses BTCUSD; binance uses BTCUSDT. Bare
+        # 'BTC' / 'ETH' style examples also work for binance.
+        crypto = [
+            e for e in examples
+            if e.upper().endswith(("USDT", "USDC", "USD", "BTC", "ETH"))
+            and len(e) > 3
+        ]
+        if crypto:
+            return crypto[0]
+        # binance's bare examples ('BTC', 'ETH') are crypto too.
+        bare = [e for e in examples if e.upper() in ("BTC", "ETH", "SOL", "BNB", "XRP")]
+        return bare[0] if bare else None
+    non_fx_non_crypto = [
+        e for e in examples
+        if not (len(e) == 6 and e.isalpha() and e.isupper())  # not forex
+        and not e.upper().endswith(("USDT", "USDC", "USD"))   # not crypto
+        and e.upper() not in ("BTC", "ETH", "SOL", "BNB", "XRP")  # not bare crypto
+    ]
+    return non_fx_non_crypto[0] if non_fx_non_crypto else examples[0]
 
 
 def check_per_source_contract_sweep() -> None:

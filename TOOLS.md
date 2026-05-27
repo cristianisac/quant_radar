@@ -23,7 +23,7 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 
 | kind | declared schema | verified | detail |
 |---|---|:---:|---|
-| `sentiment` | `sentiment_score`, `relevance_score`, `overall_score`, `sentiment_label`, `title`, `url`, `article_source`, `topics` | ✅ | rows=50, schema⊆actual=True |
+| `sentiment` | `sentiment_score`, `relevance_score`, `overall_score`, `sentiment_label`, `title`, `url`, `article_source`, `topics` | ❌ | RuntimeError: Alpha Vantage quota/notice: We have detected your API key as RGNWVI7R7VF34BLV and our standard API rate limit is 25 requests per day. Please subscribe to any of the premium plans at https://www.alphavantage.co/premium/ to instan |
 
 ### `apewisdom`
 
@@ -77,6 +77,7 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 |---|---|:---:|---|
 | `ohlcv` | `open`, `high`, `low`, `close`, `volume` | ✅ | rows=251, schema⊆actual=True |
 | `forex` | `open`, `high`, `low`, `close` | ✅ | rows=314, schema⊆actual=True |
+| `crypto` | `open`, `high`, `low`, `close`, `volume` | ✅ | rows=251, schema⊆actual=True |
 | `income` | `fiscal_period`, `fiscal_year`, `revenue`, `gross_profit`, `bottom_line_net_income` | ✅ | rows=5, schema⊆actual=True |
 | `balance` | `fiscal_period`, `fiscal_year`, `total_assets`, `total_liabilities`, `total_debt` | ✅ | rows=5, schema⊆actual=True |
 | `cash` | `fiscal_period`, `fiscal_year`, `operating_cash_flow`, `free_cash_flow` | ✅ | rows=5, schema⊆actual=True |
@@ -139,12 +140,14 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 - **Rate limit**: 1000 req/hr on free tier — generous
 - **Status**: active
 - **Coverage**: US equities + ETFs + select global ADRs (~30k). Forex majors. Adapter wraps OpenBB Platform's `tiingo` provider.
-- **Notes**: OpenBB-backed. Provides adjusted prices via adj_* columns (stripped by adapter — we keep canonical OHLCV).
+- **Notes**: OpenBB-backed. Provides adjusted prices via adj_* columns (stripped by adapter — we keep canonical OHLCV). Crypto symbols use `<base><quote>` (BTCUSD, ETHUSD).
 
 | kind | declared schema | verified | detail |
 |---|---|:---:|---|
 | `ohlcv` | `open`, `high`, `low`, `close`, `volume` | ✅ | rows=251, schema⊆actual=True |
 | `forex` | `open`, `high`, `low`, `close` | ✅ | rows=314, schema⊆actual=True |
+| `crypto` | `open`, `high`, `low`, `close`, `volume` | ❌ | EmptyDataError: 
+[Empty] -> The response is empty |
 
 ### `yfinance`
 
@@ -332,6 +335,20 @@ FX OHLC is served by yfinance, FMP, Tiingo, Polygon. They diverge in minor detai
 ## 4. Multi-source coverage per kind
 
 From `kind_coverage.py` — when more than one source serves the same kind, how they relate (primary / fallback / complementary) and the default routing chain.
+
+### `crypto`
+
+Crypto OHLCV — open/high/low/close/volume per bar. Binance is the primary path (full exchange-native data, no auth, ~2k spot pairs); FMP and Tiingo are fallbacks for when binance is rate-limited or doesn't list the pair.
+
+| provider | tier | rate limit |
+|---|---|---|
+| `binance` | primary | 1200 request-weight/min/IP — effectively unlimited |
+| `fmp` | fallback | 250 req/day on free tier — modest |
+| `tiingo` | fallback | 1000 req/hr on free tier — generous |
+
+**Default chain**: `binance` → `fmp` → `tiingo`
+
+**Routing logic**: Binance first for any crypto request. When binance is rate-limited (HTTP 429 / weight exhausted) or the pair isn't listed, fall back to FMP, then Tiingo. The three agree closely on price but disagree on volume (binance = single-venue; FMP/Tiingo = composite). For volume-driven analysis, prefer binance.
 
 ### `social_sentiment`
 

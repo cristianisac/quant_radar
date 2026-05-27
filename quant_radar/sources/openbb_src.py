@@ -73,6 +73,7 @@ _CANONICAL = ("open", "high", "low", "close", "volume")
 _KEEP_BY_KIND: dict[str, tuple[str, ...]] = {
     "ohlcv": _CANONICAL,
     "forex": ("open", "high", "low", "close"),
+    "crypto": _CANONICAL,
 }
 
 _FUNDAMENTAL_KINDS = {"income", "balance", "cash"}
@@ -209,6 +210,8 @@ def _fetch_via_openbb(
         result = obb.equity.price.historical(**kwargs)  # type: ignore[arg-type]
     elif kind == "forex":
         result = obb.currency.price.historical(**kwargs)  # type: ignore[arg-type]
+    elif kind == "crypto":
+        result = obb.crypto.price.historical(**kwargs)  # type: ignore[arg-type]
     else:
         raise ValueError(f"unsupported kind for OpenBB adapter: {kind!r}")
 
@@ -314,7 +317,7 @@ class _FMPSource(_OpenBBOHLCVSource):
     # trading + ETF holdings are 402 paid on free tier — see Finnhub
     # adapter for insider trading; ETF holdings deferred entirely.
     KINDS = (
-        "ohlcv", "forex",
+        "ohlcv", "forex", "crypto",
         "income", "balance", "cash",
         "dividends", "splits", "estimates",
     )
@@ -323,8 +326,8 @@ class _FMPSource(_OpenBBOHLCVSource):
 class _TiingoSource(_OpenBBOHLCVSource):
     PROVIDER = "tiingo"
     capability = CATALOG["tiingo"]
-    # Tiingo free tier: OHLCV + forex. Fundamentals are paid.
-    KINDS = ("ohlcv", "forex")
+    # Tiingo free tier: OHLCV + forex + crypto. Fundamentals are paid.
+    KINDS = ("ohlcv", "forex", "crypto")
 
 
 register_source(_FMPSource())

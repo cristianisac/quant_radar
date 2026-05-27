@@ -114,7 +114,8 @@ CATALOG: dict[str, SourceCapability] = {
     "fmp": SourceCapability(
         name="fmp",
         kinds=[
-            "ohlcv", "forex", "income", "balance", "cash",
+            "ohlcv", "forex", "crypto",
+            "income", "balance", "cash",
             "dividends", "splits", "estimates",
         ],
         intervals=["1m", "5m", "15m", "1h", "1d", "1w", "1mo", "quarter", "annual"],
@@ -122,10 +123,11 @@ CATALOG: dict[str, SourceCapability] = {
         coverage="US equities + global ADRs + ETFs (~40k). Forex majors. Income statement / balance sheet / cash flow for ~30k tickers, quarterly + annual. Adapter wraps OpenBB Platform's `fmp` provider.",
         auth="FMP_API_KEY env var (free signup at financialmodelingprep.com)",
         rate_limit="250 req/day on free tier — modest; cache-first is essential",
-        examples=["AAPL", "MSFT", "SPY", "TSLA", "NVDA", "EURUSD", "GBPUSD"],
+        examples=["AAPL", "MSFT", "SPY", "TSLA", "NVDA", "EURUSD", "GBPUSD", "BTCUSD", "ETHUSD"],
         schema={
             "ohlcv": ["open", "high", "low", "close", "volume"],
             "forex": ["open", "high", "low", "close"],
+            "crypto": ["open", "high", "low", "close", "volume"],
             # Fundamentals schemas use FMP's column names verbatim (e.g.
             # `bottom_line_net_income` not `net_income`). When we add a
             # second provider for fundamentals (Polygon), we'll normalize
@@ -149,18 +151,19 @@ CATALOG: dict[str, SourceCapability] = {
     ),
     "tiingo": SourceCapability(
         name="tiingo",
-        kinds=["ohlcv", "forex"],
+        kinds=["ohlcv", "forex", "crypto"],
         intervals=["1d", "1h", "5m", "1m"],
         history="Equities from listing date. Daily EOD comprehensive. IEX intraday + forex free on the basic tier.",
         coverage="US equities + ETFs + select global ADRs (~30k). Forex majors. Adapter wraps OpenBB Platform's `tiingo` provider.",
         auth="TIINGO_API_KEY env var (free signup at tiingo.com — header is Token auth)",
         rate_limit="1000 req/hr on free tier — generous",
-        examples=["AAPL", "MSFT", "SPY", "QQQ", "EURUSD", "USDJPY"],
+        examples=["AAPL", "MSFT", "SPY", "QQQ", "EURUSD", "USDJPY", "BTCUSD", "ETHUSD"],
         schema={
             "ohlcv": ["open", "high", "low", "close", "volume"],
             "forex": ["open", "high", "low", "close"],
+            "crypto": ["open", "high", "low", "close", "volume"],
         },
-        notes="OpenBB-backed. Provides adjusted prices via adj_* columns (stripped by adapter — we keep canonical OHLCV).",
+        notes="OpenBB-backed. Provides adjusted prices via adj_* columns (stripped by adapter — we keep canonical OHLCV). Crypto symbols use `<base><quote>` (BTCUSD, ETHUSD).",
     ),
     "polygon": SourceCapability(
         name="polygon",
