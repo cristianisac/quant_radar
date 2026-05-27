@@ -56,7 +56,11 @@ def check_catalog_coverage() -> None:
     Every *other* active catalog entry MUST register a Source subclass.
     """
     print("\n=== 1. Catalog coverage ===")
-    NEWS_SOURCES = {"gdelt", "finnhub"}
+    # finnhub now has a Source ABC adapter for kind='insider' but still
+    # serves news via the list[dict] surface. gdelt is the same: ABC for
+    # kind='news_tone' but list[dict] for kind='news'. Both are registered
+    # as Sources via their ABC kinds; they're no longer excluded here.
+    NEWS_SOURCES: set[str] = set()
     registry_names = {s.name for s in all_sources()}
     catalog_names = set(CATALOG.keys())
     missing_in_catalog = registry_names - catalog_names

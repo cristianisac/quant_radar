@@ -42,6 +42,10 @@ const PREFERRED_HEADLINE: Record<string, string[]> = {
   cash: ["operating_cash_flow", "free_cash_flow"],
   sentiment: ["sentiment_score", "relevance_score", "sentiment_label", "title"],
   social_sentiment: ["mentions", "mentions_change_pct", "rank", "name"],
+  dividends: ["amount", "dividend_yield", "frequency", "payment_date"],
+  splits: ["numerator", "denominator", "splitType"],
+  estimates: ["estimated_revenue_avg", "estimated_eps_avg", "estimated_ebitda_avg", "number_analysts_eps"],
+  insider: ["transaction_price", "share", "transaction_code", "insider_name"],
 };
 
 function pickHeadlineCols(kind: string, allCols: string[]): string[] {

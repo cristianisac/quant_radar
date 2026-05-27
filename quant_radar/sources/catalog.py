@@ -113,7 +113,10 @@ CATALOG: dict[str, SourceCapability] = {
     ),
     "fmp": SourceCapability(
         name="fmp",
-        kinds=["ohlcv", "forex", "income", "balance", "cash"],
+        kinds=[
+            "ohlcv", "forex", "income", "balance", "cash",
+            "dividends", "splits", "estimates",
+        ],
         intervals=["1m", "5m", "15m", "1h", "1d", "1w", "1mo", "quarter", "annual"],
         history="Equities from listing date (1985+ for major US tickers). Fundamentals from 1985+. Daily EOD reliable. Intraday + forex on free tier with rate limits.",
         coverage="US equities + global ADRs + ETFs (~40k). Forex majors. Income statement / balance sheet / cash flow for ~30k tickers, quarterly + annual. Adapter wraps OpenBB Platform's `fmp` provider.",
@@ -131,6 +134,16 @@ CATALOG: dict[str, SourceCapability] = {
             "income": ["fiscal_period", "fiscal_year", "revenue", "gross_profit", "bottom_line_net_income"],
             "balance": ["fiscal_period", "fiscal_year", "total_assets", "total_liabilities", "total_debt"],
             "cash": ["fiscal_period", "fiscal_year", "operating_cash_flow", "free_cash_flow"],
+            # Dividends + splits are event tables (one row per event,
+            # indexed by event date). Schema names follow FMP/OpenBB's
+            # upstream naming.
+            "dividends": ["amount", "dividend_yield", "frequency", "payment_date", "record_date"],
+            "splits": ["numerator", "denominator", "splitType"],
+            # Forward analyst estimates — quarterly + annual ranges.
+            "estimates": [
+                "estimated_revenue_avg", "estimated_eps_avg",
+                "estimated_ebitda_avg", "number_analysts_eps",
+            ],
         },
         notes="OHLCV via obb.equity.price.historical; forex via obb.currency.price.historical. Fundamentals via obb.equity.fundamental.income/balance/cash with period='quarter'|'annual'. Adapter sets the DataFrame index to period_ending so each row is anchored to its fiscal period end-date.",
     ),
@@ -283,17 +296,32 @@ CATALOG: dict[str, SourceCapability] = {
     ),
     "finnhub": SourceCapability(
         name="finnhub",
-        kinds=["news"],
-        intervals=["general news (real-time); company news (explicit date range)"],
+        kinds=["news", "insider"],
+        intervals=["news: real-time / per-window; insider: rolling 12mo"],
         history=(
             "Free tier: company news ~1 year back per call; general news "
-            "is rolling real-time."
+            "rolling real-time; insider-transactions rolling 12 months."
         ),
-        coverage="curated finance news plus company-specific (US tickers)",
+        coverage=(
+            "curated finance news plus company-specific (US tickers). "
+            "Insider transactions cover US-listed equities, one row per "
+            "Form-4 filing."
+        ),
         auth="FINNHUB_API_KEY env var (free signup at finnhub.io)",
         rate_limit="60 calls/min on the free tier",
-        examples=["AAPL", "MSFT", "TSLA"],
-        schema={"news": ["title", "url", "source", "published_at", "summary"]},
+        examples=["AAPL", "MSFT", "TSLA", "NVDA"],
+        schema={
+            "news": ["title", "url", "source", "published_at", "summary"],
+            "insider": [
+                "transaction_price", "share", "change", "transaction_code",
+                "insider_name", "filing_date", "is_derivative", "source",
+            ],
+        },
+        notes=(
+            "ETF holdings + analyst recommendation time-series are also "
+            "free, but ETF holdings is paywalled (verified 2026-05-26). "
+            "Recommendation trends ship in phase 2b.4."
+        ),
     ),
 }
 

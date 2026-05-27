@@ -20,6 +20,7 @@ from quant_radar.sources import (  # noqa: F401
     alphavantage_src,
     apewisdom_src,
     binance_src,
+    finnhub_src,
     fred_src,
     gdelt_src,
     marketaux_src,
