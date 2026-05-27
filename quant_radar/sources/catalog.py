@@ -117,6 +117,7 @@ CATALOG: dict[str, SourceCapability] = {
             "ohlcv", "forex", "crypto",
             "income", "balance", "cash",
             "dividends", "splits", "estimates",
+            "sec_filings",
         ],
         intervals=["1m", "5m", "15m", "1h", "1d", "1w", "1mo", "quarter", "annual"],
         history="Equities from listing date (1985+ for major US tickers). Fundamentals from 1985+. Daily EOD reliable. Intraday + forex on free tier with rate limits.",
@@ -146,6 +147,12 @@ CATALOG: dict[str, SourceCapability] = {
                 "estimated_revenue_avg", "estimated_eps_avg",
                 "estimated_ebitda_avg", "number_analysts_eps",
             ],
+            # SEC filings (Form 4, 10-K, 10-Q, 8-K, etc.) via FMP. Less
+            # rich than the direct SEC provider but easier on rate limit.
+            "sec_filings": [
+                "report_type", "report_url", "filing_url",
+                "symbol", "cik", "accepted_date",
+            ],
         },
         notes="OHLCV via obb.equity.price.historical; forex via obb.currency.price.historical. Fundamentals via obb.equity.fundamental.income/balance/cash with period='quarter'|'annual'. Adapter sets the DataFrame index to period_ending so each row is anchored to its fiscal period end-date.",
     ),
@@ -167,16 +174,20 @@ CATALOG: dict[str, SourceCapability] = {
     ),
     "polygon": SourceCapability(
         name="polygon",
-        kinds=["ohlcv", "forex"],
-        intervals=["1m", "5m", "15m", "1h", "1d", "1w", "1mo"],
-        history="Free tier: ~2 years EOD daily for stocks. Forex on free tier. Futures + options require paid plans.",
-        coverage="US equities + ETFs + indices + crypto + FX (~70k tickers). Hand-written REST adapter (Polygon not in OpenBB Platform's bundled providers).",
+        kinds=["ohlcv", "forex", "ticker_news"],
+        intervals=["1m", "5m", "15m", "1h", "1d", "1w", "1mo", "event (ticker_news)"],
+        history="Free tier: ~2 years EOD daily for stocks. Forex on free tier. Futures + options require paid plans. Per-ticker news is rolling.",
+        coverage="US equities + ETFs + indices + crypto + FX (~70k tickers). Per-ticker news with LLM-derived sentiment + reasoning + keywords. Hand-written REST adapter (Polygon not in OpenBB Platform's bundled providers).",
         auth="POLYGON_API_KEY env var (free signup at polygon.io)",
         rate_limit="5 calls/min on free tier — tight; cache aggressively",
         examples=["AAPL", "MSFT", "SPY", "EURUSD", "GBPUSD"],
         schema={
             "ohlcv": ["open", "high", "low", "close", "volume"],
             "forex": ["open", "high", "low", "close"],
+            "ticker_news": [
+                "title", "author", "publisher", "article_url",
+                "sentiment", "sentiment_reasoning", "keywords",
+            ],
         },
         notes="Equity aggregates use bare ticker; forex aggregates use `C:<pair>` prefix (e.g. C:EURUSD). Adapter handles the prefix internally.",
     ),

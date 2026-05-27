@@ -47,6 +47,24 @@ KIND_RELATIONSHIPS: dict[str, dict[str, Any]] = {
             "polarity misses retail attention spikes."
         ),
     },
+    "regulatory_paper_trail": {
+        "description": (
+            "SEC filings + insider transactions + analyst estimates. "
+            "The paper trail behind a name: what management actually "
+            "filed, what insiders actually bought/sold, what analysts "
+            "actually project."
+        ),
+        "kinds": ["sec_filings", "insider", "estimates"],
+        "relationship": "siblings",
+        "combo_tool": None,
+        "rationale": (
+            "When the user asks 'what's the actual regulatory paper "
+            "trail for X' (often before earnings or after a news "
+            "spike), pair these three. Insider transactions are a "
+            "specific Form-4 subset of all filings — the wider "
+            "sec_filings table catches 10-K / 10-Q / 8-K / etc."
+        ),
+    },
     "event_calendar_overlay": {
         "description": (
             "Forward event calendars (earnings, IPOs) layered with the "
