@@ -12,6 +12,10 @@ from quant_radar.tools.compat import (
     tools_for_ref,
 )
 from quant_radar.tools.dataframe import filter_by_date
+from quant_radar.tools.calendar import (
+    describe_economic_calendar_routing,
+    fetch_economic_calendar,
+)
 from quant_radar.tools.cards import (
     add_annotation,
     clear_dashboard,
@@ -73,12 +77,14 @@ __all__ = [
     "compute_indicators",
     "compute_returns",
     "create_dashboard_card",
+    "describe_economic_calendar_routing",
     "describe_kind_coverage",
     "describe_source",
     "describe_symbol",
     "detect_breakouts",
     "detect_channels",
     "detect_patterns_vision",
+    "fetch_economic_calendar",
     "fetch_news",
     "fetch_top_headlines",
     "filter_by_date",

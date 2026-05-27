@@ -59,11 +59,11 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 | kind | declared schema | verified | detail |
 |---|---|:---:|---|
 | `news` | `title`, `url`, `source`, `published_at`, `summary` | ✅ | non-conforming surface (not ABC) |
-| `insider` | `transaction_price`, `share`, `change`, `transaction_code`, `insider_name`, `filing_date`, `is_derivative`, `source` | ✅ | rows=115, schema⊆actual=True |
-| `earnings_calendar` | `symbol`, `eps_estimate`, `eps_actual`, `revenue_estimate`, `revenue_actual`, `hour`, `quarter`, `year` | ✅ | rows=409, schema⊆actual=True |
-| `ipo_calendar` | `symbol`, `company_name`, `exchange`, `number_of_shares`, `price`, `status`, `total_shares_value` | ❌ | rows=0, schema⊆actual=True |
-| `recommendation` | `strong_buy`, `buy`, `hold`, `sell`, `strong_sell`, `symbol` | ✅ | rows=4, schema⊆actual=True |
-| `insider_sentiment` | `change`, `mspr`, `symbol` | ✅ | rows=11, schema⊆actual=True |
+| `insider` | `transaction_price`, `share`, `change`, `transaction_code`, `insider_name`, `filing_date`, `is_derivative`, `source` | ❌ | ReadTimeout: HTTPSConnectionPool(host='finnhub.io', port=443): Read timed out. (read timeout=15) |
+| `earnings_calendar` | `symbol`, `eps_estimate`, `eps_actual`, `revenue_estimate`, `revenue_actual`, `hour`, `quarter`, `year` | ❌ | ReadTimeout: HTTPSConnectionPool(host='finnhub.io', port=443): Read timed out. (read timeout=15) |
+| `ipo_calendar` | `symbol`, `company_name`, `exchange`, `number_of_shares`, `price`, `status`, `total_shares_value` | ❌ | ReadTimeout: HTTPSConnectionPool(host='finnhub.io', port=443): Read timed out. (read timeout=15) |
+| `recommendation` | `strong_buy`, `buy`, `hold`, `sell`, `strong_sell`, `symbol` | ❌ | ReadTimeout: HTTPSConnectionPool(host='finnhub.io', port=443): Read timed out. (read timeout=15) |
+| `insider_sentiment` | `change`, `mspr`, `symbol` | ❌ | ReadTimeout: HTTPSConnectionPool(host='finnhub.io', port=443): Read timed out. (read timeout=15) |
 
 ### `fmp`
 
@@ -158,11 +158,11 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 - **Rate limit**: No documented limit. Be polite — once per few minutes; the underlying data only changes when events tick off.
 - **Status**: active
 - **Coverage**: Per-country pages: united-states, euro-area, united-kingdom, germany, france, italy, spain, japan, china, canada, australia, plus ~20 others. Covers all major releases for the country incl. proprietary indicators (PMIs, Consumer Confidence, ECB/Fed speakers, central-bank rate decisions).
-- **Notes**: **ToS gray area.** Trading Economics' Terms of Use prohibit automated extraction. Their public `guest:guest` HTTP API token was discontinued in 2026 to push everyone to paid plans. Country-page scraping still works technically but is a side-door around their pricing — acceptable for personal research, not for redistribution. The OpenBB `tradingeconomics` provider for `obb.economy.calendar` needs a paid key and is the clean licensed path; this adapter scrapes country pages with no auth.
+- **Notes**: **Default window**: when no start/end is passed on the DataRef, the adapter returns the current calendar week (Monday→Sunday UTC). Pass explicit start/end to widen — still bounded by the ~4 weeks TE renders. **ToS gray area.** Trading Economics' Terms of Use prohibit automated extraction. Their public `guest:guest` HTTP API token was discontinued in 2026 to push everyone to paid plans. Country-page scraping still works technically but is a side-door around their pricing — acceptable for personal research, not for redistribution. The OpenBB `tradingeconomics` provider for `obb.economy.calendar` needs a paid key and is the clean licensed path; this adapter scrapes country pages with no auth.
 
 | kind | declared schema | verified | detail |
 |---|---|:---:|---|
-| `economic_calendar` | `country`, `event`, `period`, `actual`, `previous`, `consensus`, `forecast` | ✅ | rows=297, schema⊆actual=True |
+| `economic_calendar` | `country`, `event`, `period`, `actual`, `previous`, `consensus`, `forecast` | ✅ | rows=84, schema⊆actual=True |
 
 ### `yfinance`
 
@@ -177,7 +177,7 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 
 ## 2. Agent-callable tool surface
 
-Every function exported from `quant_radar.tools`. The grouping is intent-based, not module-based. Tool count = 48.
+Every function exported from `quant_radar.tools`. The grouping is intent-based, not module-based. Tool count = 50.
 
 ### Card lifecycle
 
@@ -222,6 +222,11 @@ Every function exported from `quant_radar.tools`. The grouping is intent-based, 
 - `fetch_attention_and_polarity` — Combine the volume axis (Apewisdom) with the polarity axis (AV/Marketaux).
 - `fetch_sentiment` — Fetch per-ticker news sentiment with automatic provider fallback.
 - `fetch_social_sentiment` — Fetch Reddit-mention velocity for ``ticker`` via Apewisdom.
+
+### Economic calendar
+
+- `describe_economic_calendar_routing` — Return the kind_coverage record for ``economic_calendar``.
+- `fetch_economic_calendar` — Fetch the economic calendar for ``country`` (current week by default).
 
 ### Discovery / source introspection
 
@@ -374,6 +379,18 @@ FX OHLC is served by yfinance, FMP, Tiingo, Polygon. They diverge in minor detai
 ## 4. Multi-source coverage per kind
 
 From `kind_coverage.py` — when more than one source serves the same kind, how they relate (primary / fallback / complementary) and the default routing chain.
+
+### `economic_calendar`
+
+Per-country economic calendar — scheduled macro releases with actual / previous / consensus / forecast columns. Default window is the current calendar week (Mon→Sun); DataRef.start/end widens or shifts it (still bounded by the ~4 weeks Trading Economics renders).
+
+| provider | tier | rate limit |
+|---|---|---|
+| `tradingeconomics` | primary | No documented limit on the country pages; cache intraday (5 min). Be polite — once per few minutes. |
+
+**Default chain**: `tradingeconomics`
+
+**Routing logic**: Trading Economics is currently the only free provider of a complete actual/previous/consensus/forecast economic calendar. FRED's `/releases/dates` endpoint can give a longer-horizon schedule (months out) but without the consensus/forecast columns — wire that as a fallback if/when TE's HTML changes break the parser. For paid plans, the OpenBB `tradingeconomics` provider needs the licensed key and gives the same data via `obb.economy.calendar`.
 
 ### `crypto`
 
