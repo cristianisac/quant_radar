@@ -84,14 +84,19 @@ def test_gdelt_handles_non_json_response():
 
 @responses.activate
 def test_gdelt_http_error_propagates_after_retries():
-    """Three 429s in a row → raise. Confirms retries don't loop forever."""
-    for _ in range(3):
+    """Four consecutive 429s → raise. Confirms retries don't loop forever.
+
+    Initial attempt + len(_RETRY_DELAYS) retries. After the bump to
+    (1.0, 3.0, 8.0) that's 4 attempts total.
+    """
+    expected_calls = 1 + len(gdelt_src._RETRY_DELAYS)
+    for _ in range(expected_calls):
         responses.add(
             responses.GET, gdelt_src._BASE, json={"err": "limited"}, status=429,
         )
     with pytest.raises(requests.HTTPError):
         gdelt_src.fetch_news("BTC")
-    assert len(responses.calls) == 3
+    assert len(responses.calls) == expected_calls
 
 
 @responses.activate
