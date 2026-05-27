@@ -54,12 +54,14 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 - **Rate limit**: 60 calls/min on the free tier
 - **Status**: active
 - **Coverage**: curated finance news plus company-specific (US tickers). Insider transactions cover US-listed equities, one row per Form-4 filing.
-- **Notes**: ETF holdings + analyst recommendation time-series are also free, but ETF holdings is paywalled (verified 2026-05-26). Recommendation trends ship in phase 2b.4.
+- **Notes**: Calendars are window-scoped — ref.name accepts '7d' / '30d' / '60d' / '90d' (default 30d). Economic calendar is paid on every free provider we have keys for (FMP 402, tradingeconomics requires paid key) — deferred. ETF holdings + analyst recommendation time-series also free on Finnhub, but ETF holdings is paywalled (verified 2026-05-26). Recommendation trends ship in phase 2b.4.
 
 | kind | declared schema | verified | detail |
 |---|---|:---:|---|
 | `news` | `title`, `url`, `source`, `published_at`, `summary` | ✅ | non-conforming surface (not ABC) |
-| `insider` | `transaction_price`, `share`, `change`, `transaction_code`, `insider_name`, `filing_date`, `is_derivative`, `source` | ✅ | rows=115, schema⊆actual=True |
+| `insider` | `transaction_price`, `share`, `change`, `transaction_code`, `insider_name`, `filing_date`, `is_derivative`, `source` | ✅ | non-conforming surface (not ABC) |
+| `earnings_calendar` | `symbol`, `eps_estimate`, `eps_actual`, `revenue_estimate`, `revenue_actual`, `hour`, `quarter`, `year` | ✅ | non-conforming surface (not ABC) |
+| `ipo_calendar` | `symbol`, `company_name`, `exchange`, `number_of_shares`, `price`, `status`, `total_shares_value` | ❌ | rows=0, schema⊆actual=True |
 
 ### `fmp`
 
@@ -102,7 +104,7 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 | kind | declared schema | verified | detail |
 |---|---|:---:|---|
 | `news` | `title`, `url`, `source`, `published_at` | ✅ | non-conforming surface (not ABC) |
-| `news_tone` | `tone` | ✅ | rows=167, schema⊆actual=True |
+| `news_tone` | `tone` | ✅ | rows=166, schema⊆actual=True |
 
 ### `marketaux`
 
@@ -236,6 +238,14 @@ Reddit mention-velocity AND news polarity for the same ticker. The two are ortho
 **Combo tool**: `fetch_attention_and_polarity`
 
 **When to apply**: Always combine when the user asks about sentiment for a specific ticker. Either axis alone can mislead: pure social-sentiment misses the news direction; pure news polarity misses retail attention spikes.
+
+### `event_calendar_overlay` — *primary_plus_context*
+
+**Kinds**: `earnings_calendar`, `ipo_calendar`, `ohlcv`
+
+Forward event calendars (earnings, IPOs) layered with the ticker's OHLCV chart. Tells the agent where the next catalysts are without leaving the price view.
+
+**When to apply**: When the user asks 'what's coming up' or wants to position around an upcoming print, pair OHLCV with the relevant calendar. Earnings calendar for individual names; IPO calendar for sector-wide flow / new-listing impact.
 
 ### `shareholder_returns` — *siblings*
 

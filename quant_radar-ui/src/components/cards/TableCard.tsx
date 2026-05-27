@@ -46,6 +46,8 @@ const PREFERRED_HEADLINE: Record<string, string[]> = {
   splits: ["numerator", "denominator", "splitType"],
   estimates: ["estimated_revenue_avg", "estimated_eps_avg", "estimated_ebitda_avg", "number_analysts_eps"],
   insider: ["transaction_price", "share", "transaction_code", "insider_name"],
+  earnings_calendar: ["symbol", "eps_estimate", "revenue_estimate", "hour"],
+  ipo_calendar: ["symbol", "company_name", "exchange", "price"],
 };
 
 function pickHeadlineCols(kind: string, allCols: string[]): string[] {
