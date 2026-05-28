@@ -108,7 +108,7 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 | kind | declared schema | verified | detail |
 |---|---|:---:|---|
 | `news` | `title`, `url`, `source`, `published_at` | ✅ | non-conforming surface (not ABC) |
-| `news_tone` | `tone` | ❌ | HTTPError: 429 Client Error: Too Many Requests for url: https://api.gdeltproject.org/api/v2/doc/doc?query=Bitcoin&mode=timelinetone&format=json&timespan=7d |
+| `news_tone` | `tone` | ✅ | rows=166, schema⊆actual=True |
 
 ### `marketaux`
 
@@ -174,7 +174,7 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 | kind | declared schema | verified | detail |
 |---|---|:---:|---|
 | `ohlcv` | `open`, `high`, `low`, `close`, `volume` | ✅ | rows=1253, schema⊆actual=True |
-| `futures_aggregate` | `total_contracts`, `standard_contracts`, `micro_contracts`, `total_notional`, `standard_notional`, `micro_notional`, `active_months_std`, `active_months_micro` | ❌ | ValueError: unknown asset 'AAPL'; supported: ['BTC', 'ETH', 'SOL', 'XRP', 'LINK', 'ADA', 'XLM'] |
+| `futures_aggregate` | `standard_contracts`, `micro_contracts`, `total_notional`, `standard_notional`, `micro_notional`, `active_months_std`, `active_months_micro` | ❌ | ValueError: unknown asset 'AAPL'; supported: ['BTC', 'ETH', 'SOL', 'XRP', 'LINK', 'ADA', 'XLM'] |
 
 ## 2. Agent-callable tool surface
 

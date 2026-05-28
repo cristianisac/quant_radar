@@ -26,13 +26,26 @@ Returned DataFrame (``kind="futures_aggregate"``):
     index   timestamp (tz-aware UTC, daily)
     columns
         standard_contracts   sum of vol on standard CME contracts that day
+                             (the institutional-benchmark count; what
+                             "total contracts" conventionally refers to)
         micro_contracts      sum of vol on micro CME contracts that day
-        total_contracts      standard + micro
+                             (kept separate — contract size is 50x smaller
+                             so they CANNOT be summed with standard
+                             counts in any meaningful unit)
         standard_notional    sum(close * vol * std_size) USD
         micro_notional       sum(close * vol * micro_size) USD
-        total_notional       standard + micro notional
+        total_notional       standard_notional + micro_notional
+                             (USD is unit-consistent so summing is valid)
         active_months_std    count of standard contract months that traded
         active_months_micro  count of micro contract months that traded
+
+There is intentionally no ``total_contracts`` column. Standard and
+micro have different contract sizes (e.g. BTC: 5 BTC vs 0.1 BTC — a
+50x mismatch) so summing the counts produces a number that means
+nothing in any unit. When the user asks for "total BTC futures
+volume", give them ``standard_contracts``; when they specifically
+ask for micros, give them ``micro_contracts``. For a single number
+that genuinely combines both, use ``total_notional`` (USD).
 """
 
 from __future__ import annotations
@@ -239,9 +252,8 @@ def fetch_cme_futures_volume(
             return pd.DataFrame(columns=SCHEMA_COLS)
 
         joined = std_df.join(mic_df, how="outer").fillna(0)
-        joined["total_contracts"] = (
-            joined.get("standard_contracts", 0) + joined.get("micro_contracts", 0)
-        ).astype(int)
+        # USD notional is unit-consistent across variants — summing is
+        # meaningful. Contract counts are NOT summed (different sizes).
         joined["total_notional"] = (
             joined.get("standard_notional", 0) + joined.get("micro_notional", 0)
         )
@@ -250,6 +262,12 @@ def fetch_cme_futures_volume(
                     "active_months_std", "active_months_micro"):
             if col in joined.columns:
                 joined[col] = joined[col].fillna(0).astype(int)
+        # Ensure SCHEMA_COLS columns are always present, even when one
+        # variant has no rows on a given day (e.g. early-listing days
+        # for the micro contracts).
+        for col in SCHEMA_COLS:
+            if col not in joined.columns:
+                joined[col] = 0
 
         return joined[[c for c in SCHEMA_COLS if c in joined.columns]]
 
@@ -259,8 +277,19 @@ def fetch_cme_futures_volume(
     )
 
 
+# Contract counts are NOT summed across standard + micro because the
+# contract sizes differ by orders of magnitude (e.g. BTC: 5 vs 0.1, a
+# 50x mismatch). Summing 4,819 std + 27,943 micro into "32,762 total
+# contracts" yields a number that means nothing in any unit. When the
+# user asks for "total contracts" the convention is the **standard**
+# contract count (the institutional-benchmark count CME reports). USD
+# notional CAN be summed — dollars are dollars regardless of contract
+# size — so `total_notional` survives.
+#
+# Schema (standard_contracts FIRST so the column-agnostic ChartCard
+# picks it as the default y-axis when plotted):
 SCHEMA_COLS = [
-    "total_contracts", "standard_contracts", "micro_contracts",
+    "standard_contracts", "micro_contracts",
     "total_notional", "standard_notional", "micro_notional",
     "active_months_std", "active_months_micro",
 ]

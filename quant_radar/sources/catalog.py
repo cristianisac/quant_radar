@@ -85,11 +85,16 @@ CATALOG: dict[str, SourceCapability] = {
             # / XRP / LINK / ADA / XLM (case-insensitive). See
             # cme_futures_src.ASSET_REGISTRY for contract sizes and
             # which variants exist on yfinance.
-            # total_contracts FIRST so the column-agnostic ChartCard
-            # picks it as the y-axis when plotted. Standard / micro
-            # split is below for the table view + multi-series cards.
+            # standard_contracts is the headline ("total contracts"
+            # conventionally refers to the standard count — institutional
+            # benchmark). Micro is reported separately because its
+            # contract size differs by ~50x, so summing the counts would
+            # be meaningless in any unit. USD notional CAN be summed
+            # since dollars are dollars regardless of contract size.
+            # Order matters — column-agnostic ChartCard picks the first
+            # numeric column for the y-axis.
             "futures_aggregate": [
-                "total_contracts", "standard_contracts", "micro_contracts",
+                "standard_contracts", "micro_contracts",
                 "total_notional", "standard_notional", "micro_notional",
                 "active_months_std", "active_months_micro",
             ],
