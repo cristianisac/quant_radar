@@ -46,12 +46,19 @@ def fetch_cme_futures_volume(
 
     Returns ``(df, source_used)`` mirroring the other ``fetch_*`` tools.
     Columns:
-        total_contracts, standard_contracts, micro_contracts,
-        total_notional, standard_notional, micro_notional,
+        standard_contracts   (the headline "total contracts" number)
+        micro_contracts      (kept separate — contract size differs)
+        total_notional, standard_notional, micro_notional
         active_months_std, active_months_micro
 
     Notional is USD = sum(close × volume × contract_size) per day for
-    each variant.
+    each variant; ``total_notional`` is the sum of std + micro notional
+    (valid because dollars are unit-consistent across contract sizes).
+
+    There is NO ``total_contracts`` column — standard and micro CME
+    contracts have different underlying sizes (e.g. BTC: 5 vs 0.1) so
+    adding the counts would produce a number that means nothing in any
+    unit. For a single number combining both, read ``total_notional``.
     """
     df = hydrate(
         DataRef(
@@ -94,7 +101,6 @@ def cme_futures_scorecard(
                 "asset": asset.upper(),
                 "longname": ASSET_REGISTRY.get(asset.upper(), {}).get("longname", ""),
                 "as_of": None,
-                "total_contracts": 0,
                 "standard_contracts": 0,
                 "micro_contracts": 0,
                 "total_notional": 0.0,
@@ -105,7 +111,6 @@ def cme_futures_scorecard(
             "asset": asset.upper(),
             "longname": ASSET_REGISTRY[asset.upper()]["longname"],
             "as_of": df.index[-1].strftime("%Y-%m-%d"),
-            "total_contracts": int(last.get("total_contracts", 0)),
             "standard_contracts": int(last.get("standard_contracts", 0)),
             "micro_contracts": int(last.get("micro_contracts", 0)),
             "total_notional": float(last.get("total_notional", 0.0)),
@@ -113,8 +118,11 @@ def cme_futures_scorecard(
             "micro_notional": float(last.get("micro_notional", 0.0)),
         })
     out = pd.DataFrame(rows)
-    if "total_contracts" in out.columns:
-        out = out.sort_values("total_contracts", ascending=False)
+    # Sort by total_notional (USD-comparable across variants) for the
+    # default scorecard ranking — not by contract count since those are
+    # not comparable across the variant split.
+    if "total_notional" in out.columns:
+        out = out.sort_values("total_notional", ascending=False)
     return out.set_index("asset") if "asset" in out.columns else out
 
 
