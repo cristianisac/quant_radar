@@ -49,7 +49,7 @@ class SourceCapability:
 CATALOG: dict[str, SourceCapability] = {
     "yfinance": SourceCapability(
         name="yfinance",
-        kinds=["ohlcv", "futures_aggregate"],
+        kinds=["ohlcv", "futures_aggregate", "etf_aum"],
         intervals=["1m", "5m", "15m", "1h", "1d", "1w", "1mo"],
         history=(
             "Daily/weekly/monthly: from the asset's listing date. Verified "
@@ -97,6 +97,18 @@ CATALOG: dict[str, SourceCapability] = {
                 "standard_contracts", "micro_contracts",
                 "total_notional", "standard_notional", "micro_notional",
                 "active_months_std", "active_months_micro",
+            ],
+            # ETF AUM snapshot. ref.name accepts Bloomberg-style
+            # ('IBIT US', 'BITC SW', 'BTCC/B CN') or raw Yahoo
+            # ('IBIT', 'BITC.SW', 'BTCC-B.TO'). Returns one row per
+            # call — point-in-time, no history. yfinance covers ~44%
+            # of the user-supplied 536-ticker crypto ETF universe by
+            # count, but ~80-90% by USD AUM (US Bitcoin spot ETFs
+            # dominate). European ETPs / ETCs typically return name
+            # but null AUM — yfinance product-type limitation.
+            "etf_aum": [
+                "bloomberg", "yahoo", "longname",
+                "aum", "nav", "category", "currency", "status",
             ],
         },
     ),

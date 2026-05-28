@@ -210,7 +210,7 @@ def _describe_symbol(symbol: str) -> dict | None:
     }
 
 
-_KINDS = ("ohlcv", "futures_aggregate")
+_KINDS = ("ohlcv", "futures_aggregate", "etf_aum")
 
 
 class _YFinanceSource(Source):
@@ -239,6 +239,9 @@ class _YFinanceSource(Source):
             return fetch_cme_futures_volume(
                 ref.name, start=ref.start, end=ref.end, refresh=refresh,
             )
+        if ref.kind == "etf_aum":
+            from quant_radar.sources.etf_aum_src import fetch_etf_aum_single
+            return fetch_etf_aum_single(ref.name, refresh=refresh)
         return fetch_ohlcv(
             ref.name,
             interval=ref.interval,

@@ -75,9 +75,9 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 
 | kind | declared schema | verified | detail |
 |---|---|:---:|---|
-| `ohlcv` | `open`, `high`, `low`, `close`, `volume` | ✅ | rows=251, schema⊆actual=True |
+| `ohlcv` | `open`, `high`, `low`, `close`, `volume` | ✅ | rows=252, schema⊆actual=True |
 | `forex` | `open`, `high`, `low`, `close` | ✅ | rows=314, schema⊆actual=True |
-| `crypto` | `open`, `high`, `low`, `close`, `volume` | ✅ | rows=251, schema⊆actual=True |
+| `crypto` | `open`, `high`, `low`, `close`, `volume` | ✅ | rows=252, schema⊆actual=True |
 | `income` | `fiscal_period`, `fiscal_year`, `revenue`, `gross_profit`, `bottom_line_net_income` | ✅ | rows=5, schema⊆actual=True |
 | `balance` | `fiscal_period`, `fiscal_year`, `total_assets`, `total_liabilities`, `total_debt` | ✅ | rows=5, schema⊆actual=True |
 | `cash` | `fiscal_period`, `fiscal_year`, `operating_cash_flow`, `free_cash_flow` | ✅ | rows=5, schema⊆actual=True |
@@ -108,7 +108,7 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 | kind | declared schema | verified | detail |
 |---|---|:---:|---|
 | `news` | `title`, `url`, `source`, `published_at` | ✅ | non-conforming surface (not ABC) |
-| `news_tone` | `tone` | ✅ | rows=166, schema⊆actual=True |
+| `news_tone` | `tone` | ✅ | rows=164, schema⊆actual=True |
 
 ### `marketaux`
 
@@ -173,12 +173,13 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 
 | kind | declared schema | verified | detail |
 |---|---|:---:|---|
-| `ohlcv` | `open`, `high`, `low`, `close`, `volume` | ✅ | rows=1253, schema⊆actual=True |
+| `ohlcv` | `open`, `high`, `low`, `close`, `volume` | ✅ | rows=1254, schema⊆actual=True |
 | `futures_aggregate` | `standard_contracts`, `micro_contracts`, `total_notional`, `standard_notional`, `micro_notional`, `active_months_std`, `active_months_micro` | ❌ | ValueError: unknown asset 'AAPL'; supported: ['BTC', 'ETH', 'SOL', 'XRP', 'LINK', 'ADA', 'XLM'] |
+| `etf_aum` | `bloomberg`, `yahoo`, `longname`, `aum`, `nav`, `category`, `currency`, `status` | ✅ | rows=1, schema⊆actual=True |
 
 ## 2. Agent-callable tool surface
 
-Every function exported from `quant_radar.tools`. The grouping is intent-based, not module-based. Tool count = 53.
+Every function exported from `quant_radar.tools`. The grouping is intent-based, not module-based. Tool count = 57.
 
 ### Card lifecycle
 
@@ -234,6 +235,13 @@ Every function exported from `quant_radar.tools`. The grouping is intent-based, 
 - `cme_futures_scorecard` — Latest-day snapshot per asset — one row each.
 - `describe_cme_futures_assets` — List every supported asset with its registry record (roots,
 - `fetch_cme_futures_volume` — Daily CME futures volume + notional aggregated across all months.
+
+### ETF AUM (Assets Under Management)
+
+- `convert_bloomberg_to_yahoo` — Expose the Bloomberg → Yahoo conversion as an agent tool too.
+- `describe_etf_aum_coverage` — Return the Bloomberg-exchange → Yahoo-suffix table.
+- `etf_aum_scorecard` — Batched scorecard — one row per ticker, sorted by AUM descending.
+- `fetch_etf_aum` — AUM snapshot for one ETF ticker.
 
 ### Discovery / source introspection
 

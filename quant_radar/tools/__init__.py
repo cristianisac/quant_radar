@@ -12,6 +12,12 @@ from quant_radar.tools.compat import (
     tools_for_ref,
 )
 from quant_radar.tools.dataframe import filter_by_date
+from quant_radar.tools.etfs import (
+    convert_bloomberg_to_yahoo,
+    describe_etf_aum_coverage,
+    etf_aum_scorecard,
+    fetch_etf_aum,
+)
 from quant_radar.tools.futures import (
     cme_futures_scorecard,
     describe_cme_futures_assets,
@@ -79,20 +85,24 @@ __all__ = [
     "channel_annotations",
     "clear_dashboard",
     "cme_futures_scorecard",
+    "convert_bloomberg_to_yahoo",
     "close_working_dashboard",
     "compute_indicators",
     "compute_returns",
     "create_dashboard_card",
     "describe_cme_futures_assets",
     "describe_economic_calendar_routing",
+    "describe_etf_aum_coverage",
     "describe_kind_coverage",
     "describe_source",
     "describe_symbol",
     "detect_breakouts",
     "detect_channels",
     "detect_patterns_vision",
+    "etf_aum_scorecard",
     "fetch_cme_futures_volume",
     "fetch_economic_calendar",
+    "fetch_etf_aum",
     "fetch_news",
     "fetch_top_headlines",
     "filter_by_date",
