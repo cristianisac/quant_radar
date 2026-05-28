@@ -300,6 +300,15 @@ def _example_for_kind(cap, kind: str) -> str | None:
     if kind == "forex":
         fx = [e for e in examples if len(e) == 6 and e.isalpha() and e.isupper()]
         return fx[0] if fx else None
+    if kind == "futures_aggregate":
+        # ref.name for futures_aggregate is an ASSET root (BTC, ETH, ...),
+        # not a ticker. Prefer BTC if it's an example, otherwise the
+        # first registered asset.
+        from quant_radar.sources.cme_futures_src import ASSET_REGISTRY
+        for a in ("BTC", "ETH", "SOL"):
+            if a in ASSET_REGISTRY:
+                return a
+        return next(iter(ASSET_REGISTRY))
     if kind == "crypto":
         # FMP / Tiingo crypto uses BTCUSD; binance uses BTCUSDT. Bare
         # 'BTC' / 'ETH' style examples also work for binance.

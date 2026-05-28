@@ -3,7 +3,7 @@ Extensions to add: benzinga@1.6.1, bls@1.3.1, cftc@1.4.1, commodity@1.5.2, congr
 Building...
 # quant_radar — Tool & Data Surface
 
-**Generated**: this file is produced by `scripts/generate_tools_doc.py` from the live registry (`CATALOG` + `tools.__all__` + `kind_relationships`). Last regenerated 2026-05-27.
+**Generated**: this file is produced by `scripts/generate_tools_doc.py` from the live registry (`CATALOG` + `tools.__all__` + `kind_relationships`). Last regenerated 2026-05-28.
 
 Do not edit by hand — change the registry instead, then regenerate. A pytest assertion guards against drift.
 
@@ -23,7 +23,7 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 
 | kind | declared schema | verified | detail |
 |---|---|:---:|---|
-| `sentiment` | `sentiment_score`, `relevance_score`, `overall_score`, `sentiment_label`, `title`, `url`, `article_source`, `topics` | ❌ | RuntimeError: Alpha Vantage quota/notice: We have detected your API key as RGNWVI7R7VF34BLV and our standard API rate limit is 25 requests per day. Please subscribe to any of the premium plans at https://www.alphavantage.co/premium/ to instan |
+| `sentiment` | `sentiment_score`, `relevance_score`, `overall_score`, `sentiment_label`, `title`, `url`, `article_source`, `topics` | ✅ | rows=50, schema⊆actual=True |
 
 ### `apewisdom`
 
@@ -59,11 +59,11 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 | kind | declared schema | verified | detail |
 |---|---|:---:|---|
 | `news` | `title`, `url`, `source`, `published_at`, `summary` | ✅ | non-conforming surface (not ABC) |
-| `insider` | `transaction_price`, `share`, `change`, `transaction_code`, `insider_name`, `filing_date`, `is_derivative`, `source` | ❌ | ReadTimeout: HTTPSConnectionPool(host='finnhub.io', port=443): Read timed out. (read timeout=15) |
-| `earnings_calendar` | `symbol`, `eps_estimate`, `eps_actual`, `revenue_estimate`, `revenue_actual`, `hour`, `quarter`, `year` | ❌ | ReadTimeout: HTTPSConnectionPool(host='finnhub.io', port=443): Read timed out. (read timeout=15) |
-| `ipo_calendar` | `symbol`, `company_name`, `exchange`, `number_of_shares`, `price`, `status`, `total_shares_value` | ❌ | ReadTimeout: HTTPSConnectionPool(host='finnhub.io', port=443): Read timed out. (read timeout=15) |
-| `recommendation` | `strong_buy`, `buy`, `hold`, `sell`, `strong_sell`, `symbol` | ❌ | ReadTimeout: HTTPSConnectionPool(host='finnhub.io', port=443): Read timed out. (read timeout=15) |
-| `insider_sentiment` | `change`, `mspr`, `symbol` | ❌ | ReadTimeout: HTTPSConnectionPool(host='finnhub.io', port=443): Read timed out. (read timeout=15) |
+| `insider` | `transaction_price`, `share`, `change`, `transaction_code`, `insider_name`, `filing_date`, `is_derivative`, `source` | ✅ | rows=115, schema⊆actual=True |
+| `earnings_calendar` | `symbol`, `eps_estimate`, `eps_actual`, `revenue_estimate`, `revenue_actual`, `hour`, `quarter`, `year` | ✅ | rows=375, schema⊆actual=True |
+| `ipo_calendar` | `symbol`, `company_name`, `exchange`, `number_of_shares`, `price`, `status`, `total_shares_value` | ✅ | rows=7, schema⊆actual=True |
+| `recommendation` | `strong_buy`, `buy`, `hold`, `sell`, `strong_sell`, `symbol` | ✅ | rows=4, schema⊆actual=True |
+| `insider_sentiment` | `change`, `mspr`, `symbol` | ✅ | rows=11, schema⊆actual=True |
 
 ### `fmp`
 
@@ -95,7 +95,7 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 
 | kind | declared schema | verified | detail |
 |---|---|:---:|---|
-| `macro` | `value` | ✅ | rows=16083, schema⊆actual=True |
+| `macro` | `value` | ✅ | rows=16084, schema⊆actual=True |
 
 ### `gdelt`
 
@@ -108,7 +108,7 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 | kind | declared schema | verified | detail |
 |---|---|:---:|---|
 | `news` | `title`, `url`, `source`, `published_at` | ✅ | non-conforming surface (not ABC) |
-| `news_tone` | `tone` | ✅ | rows=164, schema⊆actual=True |
+| `news_tone` | `tone` | ❌ | HTTPError: 429 Client Error: Too Many Requests for url: https://api.gdeltproject.org/api/v2/doc/doc?query=Bitcoin&mode=timelinetone&format=json&timespan=7d |
 
 ### `marketaux`
 
@@ -162,7 +162,7 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 
 | kind | declared schema | verified | detail |
 |---|---|:---:|---|
-| `economic_calendar` | `country`, `event`, `period`, `actual`, `previous`, `consensus`, `forecast` | ✅ | rows=84, schema⊆actual=True |
+| `economic_calendar` | `country`, `event`, `period`, `actual`, `previous`, `consensus`, `forecast` | ✅ | rows=71, schema⊆actual=True |
 
 ### `yfinance`
 
@@ -174,10 +174,11 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 | kind | declared schema | verified | detail |
 |---|---|:---:|---|
 | `ohlcv` | `open`, `high`, `low`, `close`, `volume` | ✅ | rows=1253, schema⊆actual=True |
+| `futures_aggregate` | `total_contracts`, `standard_contracts`, `micro_contracts`, `total_notional`, `standard_notional`, `micro_notional`, `active_months_std`, `active_months_micro` | ❌ | ValueError: unknown asset 'AAPL'; supported: ['BTC', 'ETH', 'SOL', 'XRP', 'LINK', 'ADA', 'XLM'] |
 
 ## 2. Agent-callable tool surface
 
-Every function exported from `quant_radar.tools`. The grouping is intent-based, not module-based. Tool count = 50.
+Every function exported from `quant_radar.tools`. The grouping is intent-based, not module-based. Tool count = 53.
 
 ### Card lifecycle
 
@@ -227,6 +228,12 @@ Every function exported from `quant_radar.tools`. The grouping is intent-based, 
 
 - `describe_economic_calendar_routing` — Return the kind_coverage record for ``economic_calendar``.
 - `fetch_economic_calendar` — Fetch the economic calendar for ``country`` (current week by default).
+
+### CME crypto futures aggregate volume
+
+- `cme_futures_scorecard` — Latest-day snapshot per asset — one row each.
+- `describe_cme_futures_assets` — List every supported asset with its registry record (roots,
+- `fetch_cme_futures_volume` — Daily CME futures volume + notional aggregated across all months.
 
 ### Discovery / source introspection
 
@@ -279,6 +286,14 @@ SEC filings + insider transactions + analyst estimates. The paper trail behind a
 Options chain (strikes + expirations) layered onto the underlying's OHLCV. Read implied positioning by where open interest / strike density clusters.
 
 **When to apply**: When the user asks about positioning, gamma exposure, or 'where are the bets', pair OHLCV with the options chain. Strike density at a given expiration is a crude open-interest proxy; per-contract aggregates (separate DataRef with the contract_ticker as name) give the actual historical volume.
+
+### `futures_flow_overlay` — *primary_plus_context*
+
+**Kinds**: `futures_aggregate`, `ohlcv`, `crypto`
+
+CME crypto futures aggregate volume (kind='futures_aggregate') layered against the asset's spot OHLCV. Captures institutional vs retail futures activity (standard vs micro split) and pairs naturally with price moves — volume spikes around macro events, derivatives deleveraging, etc.
+
+**When to apply**: When the user is studying a crypto move, pair the spot chart (binance / yfinance crypto) with the CME futures aggregate. Standard / micro split tells you whether the flow is institutional (standard heavy) or retail (micro heavy). Notional volume (total_notional) is the right comparison axis when comparing futures activity to spot.
 
 ### `macro_event_overlay` — *primary_plus_context*
 
