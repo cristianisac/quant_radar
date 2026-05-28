@@ -12,6 +12,11 @@ from quant_radar.tools.compat import (
     tools_for_ref,
 )
 from quant_radar.tools.dataframe import filter_by_date
+from quant_radar.tools.futures import (
+    cme_futures_scorecard,
+    describe_cme_futures_assets,
+    fetch_cme_futures_volume,
+)
 from quant_radar.tools.calendar import (
     describe_economic_calendar_routing,
     fetch_economic_calendar,
@@ -73,10 +78,12 @@ __all__ = [
     "analyze_moving_averages",
     "channel_annotations",
     "clear_dashboard",
+    "cme_futures_scorecard",
     "close_working_dashboard",
     "compute_indicators",
     "compute_returns",
     "create_dashboard_card",
+    "describe_cme_futures_assets",
     "describe_economic_calendar_routing",
     "describe_kind_coverage",
     "describe_source",
@@ -84,6 +91,7 @@ __all__ = [
     "detect_breakouts",
     "detect_channels",
     "detect_patterns_vision",
+    "fetch_cme_futures_volume",
     "fetch_economic_calendar",
     "fetch_news",
     "fetch_top_headlines",

@@ -83,6 +83,27 @@ KIND_RELATIONSHIPS: dict[str, dict[str, Any]] = {
             "actual historical volume."
         ),
     },
+    "futures_flow_overlay": {
+        "description": (
+            "CME crypto futures aggregate volume (kind="
+            "'futures_aggregate') layered against the asset's spot "
+            "OHLCV. Captures institutional vs retail futures activity "
+            "(standard vs micro split) and pairs naturally with price "
+            "moves — volume spikes around macro events, derivatives "
+            "deleveraging, etc."
+        ),
+        "kinds": ["futures_aggregate", "ohlcv", "crypto"],
+        "relationship": "primary_plus_context",
+        "combo_tool": None,
+        "rationale": (
+            "When the user is studying a crypto move, pair the spot "
+            "chart (binance / yfinance crypto) with the CME futures "
+            "aggregate. Standard / micro split tells you whether the "
+            "flow is institutional (standard heavy) or retail (micro "
+            "heavy). Notional volume (total_notional) is the right "
+            "comparison axis when comparing futures activity to spot."
+        ),
+    },
     "macro_event_overlay": {
         "description": (
             "Economic calendar (CPI, NFP, ECB / Fed decisions, PMIs) "

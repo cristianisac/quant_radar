@@ -54,6 +54,7 @@ const PREFERRED_HEADLINE: Record<string, string[]> = {
   ticker_news: ["title", "publisher", "sentiment", "keywords"],
   options_chain: ["contract_type", "strike_price", "contract_ticker", "primary_exchange"],
   economic_calendar: ["event", "actual", "consensus", "previous"],
+  futures_aggregate: ["total_contracts", "standard_contracts", "micro_contracts", "total_notional"],
 };
 
 function pickHeadlineCols(kind: string, allCols: string[]): string[] {

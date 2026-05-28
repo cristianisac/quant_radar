@@ -49,7 +49,7 @@ class SourceCapability:
 CATALOG: dict[str, SourceCapability] = {
     "yfinance": SourceCapability(
         name="yfinance",
-        kinds=["ohlcv"],
+        kinds=["ohlcv", "futures_aggregate"],
         intervals=["1m", "5m", "15m", "1h", "1d", "1w", "1mo"],
         history=(
             "Daily/weekly/monthly: from the asset's listing date. Verified "
@@ -66,8 +66,34 @@ CATALOG: dict[str, SourceCapability] = {
         ),
         auth="none",
         rate_limit="aggressive — cache-first; only use refresh=True deliberately",
-        examples=["AAPL", "SPY", "MSFT", "TSLA", "NVDA", "BTC-USD", "EURUSD=X", "^GSPC"],
-        schema={"ohlcv": ["open", "high", "low", "close", "volume"]},
+        examples=[
+            "AAPL", "SPY", "MSFT", "TSLA", "NVDA",
+            "BTC-USD", "EURUSD=X", "^GSPC",
+            # CME crypto futures (continuous front-month via =F suffix):
+            "BTC=F", "MBT=F", "ETH=F", "MET=F", "SOL=F", "MSL=F",
+            "XRP=F", "LNK=F", "MLN=F", "ADA=F", "XLM=F", "MXL=F",
+            # Specific contracts also work (e.g. "BTCM26.CME" = Jun 2026):
+            "BTCM26.CME",
+            # Asset roots for kind=futures_aggregate (sum across all months):
+            "BTC", "ETH", "SOL", "XRP", "LINK", "ADA", "XLM",
+        ],
+        schema={
+            "ohlcv": ["open", "high", "low", "close", "volume"],
+            # CME futures aggregate: enumerates every active contract
+            # month per asset root + variant (standard / micro) and sums
+            # daily volume + notional. ref.name accepts BTC / ETH / SOL
+            # / XRP / LINK / ADA / XLM (case-insensitive). See
+            # cme_futures_src.ASSET_REGISTRY for contract sizes and
+            # which variants exist on yfinance.
+            # total_contracts FIRST so the column-agnostic ChartCard
+            # picks it as the y-axis when plotted. Standard / micro
+            # split is below for the table view + multi-series cards.
+            "futures_aggregate": [
+                "total_contracts", "standard_contracts", "micro_contracts",
+                "total_notional", "standard_notional", "micro_notional",
+                "active_months_std", "active_months_micro",
+            ],
+        },
     ),
     "binance": SourceCapability(
         name="binance",

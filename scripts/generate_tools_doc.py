@@ -103,6 +103,14 @@ _TOOL_GROUPS: list[tuple[str, list[str]]] = [
         ],
     ),
     (
+        "CME crypto futures aggregate volume",
+        [
+            "fetch_cme_futures_volume",
+            "cme_futures_scorecard",
+            "describe_cme_futures_assets",
+        ],
+    ),
+    (
         "Discovery / source introspection",
         [
             "list_sources",

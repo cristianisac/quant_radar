@@ -210,13 +210,35 @@ def _describe_symbol(symbol: str) -> dict | None:
     }
 
 
+_KINDS = ("ohlcv", "futures_aggregate")
+
+
 class _YFinanceSource(Source):
+    """Multi-kind yfinance adapter.
+
+    - ``ohlcv``: per-symbol OHLCV history (equities, ETFs, indices,
+      FX with `=X`, crypto with `*-USD`, futures with `=F`).
+    - ``futures_aggregate``: enumerates every active CME crypto futures
+      contract month for an asset root (e.g. ``BTC``) and sums daily
+      volume + notional separately for standard vs micro variants.
+    """
+
     capability = CATALOG["yfinance"]
 
     def supports(self, ref: _DataRef) -> bool:
-        return ref.source == SOURCE and ref.kind == "ohlcv"
+        return ref.source == SOURCE and ref.kind in _KINDS
 
     def fetch(self, ref: _DataRef, *, refresh: bool = False) -> pd.DataFrame:
+        if ref.kind == "futures_aggregate":
+            # Late import — cme_futures_src lives in the same package and
+            # importing at module top creates a circular ref through
+            # base_source.
+            from quant_radar.sources.cme_futures_src import (
+                fetch_cme_futures_volume,
+            )
+            return fetch_cme_futures_volume(
+                ref.name, start=ref.start, end=ref.end, refresh=refresh,
+            )
         return fetch_ohlcv(
             ref.name,
             interval=ref.interval,
