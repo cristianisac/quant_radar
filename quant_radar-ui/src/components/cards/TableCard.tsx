@@ -55,6 +55,7 @@ const PREFERRED_HEADLINE: Record<string, string[]> = {
   options_chain: ["contract_type", "strike_price", "contract_ticker", "primary_exchange"],
   economic_calendar: ["event", "actual", "consensus", "previous"],
   futures_aggregate: ["standard_contracts", "micro_contracts", "total_notional", "active_months_std"],
+  etf_aum: ["yahoo", "aum", "nav", "longname"],
 };
 
 function pickHeadlineCols(kind: string, allCols: string[]): string[] {

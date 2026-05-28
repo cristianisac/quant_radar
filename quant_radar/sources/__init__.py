@@ -3,6 +3,7 @@ from quant_radar.sources import (
     apewisdom_src,
     binance_src,
     cme_futures_src,  # noqa: F401 — registry data for kind=futures_aggregate
+    etf_aum_src,  # noqa: F401 — registry data for kind=etf_aum
     finnhub_src,  # noqa: F401 — already imported, kept for explicit registration
     fred_src,
     gdelt_src,
@@ -18,6 +19,7 @@ __all__ = [
     "apewisdom_src",
     "binance_src",
     "cme_futures_src",
+    "etf_aum_src",
     "finnhub_src",
     "fred_src",
     "gdelt_src",

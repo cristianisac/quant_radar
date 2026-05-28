@@ -111,6 +111,15 @@ _TOOL_GROUPS: list[tuple[str, list[str]]] = [
         ],
     ),
     (
+        "ETF AUM (Assets Under Management)",
+        [
+            "fetch_etf_aum",
+            "etf_aum_scorecard",
+            "describe_etf_aum_coverage",
+            "convert_bloomberg_to_yahoo",
+        ],
+    ),
+    (
         "Discovery / source introspection",
         [
             "list_sources",
