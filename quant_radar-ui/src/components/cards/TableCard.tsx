@@ -155,9 +155,12 @@ export function TableCard({ card, enlarged = false }: Props) {
     );
   }
 
-  // Compact preview: latest period + key metrics, 4 most recent periods
-  // as a small table. Enlarged: full table with every column, sortable.
-  const previewRows = enlarged ? visibleRows : visibleRows.slice(0, 4);
+  // Compact preview: every row, but only the headline columns; the
+  // tbody container is overflow-auto so the card scrolls vertically.
+  // Previously we sliced to 4 rows here, which hid the rest of a 10-
+  // row scorecard (user, 2026-05-29). Enlarged: every row + every
+  // column, sortable.
+  const previewRows = visibleRows;
   const previewCols = enlarged ? allCols : compactCols;
 
   return (

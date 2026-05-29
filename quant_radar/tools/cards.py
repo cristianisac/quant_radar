@@ -36,9 +36,21 @@ def _coerce_chart_spec(chart_spec: dict | ChartSpec | None) -> ChartSpec | None:
 
 
 def _coerce_layout(layout: dict | LayoutHint | None) -> LayoutHint:
+    """Coerce a layout hint, forcing uniform card size.
+
+    The agent doesn't get to size cards — that's a UX decision. Every
+    new card ships at the default (width=6, height=4) so the dashboard
+    looks like a tidy grid instead of one full-width banner sitting on
+    top of three half-width tiles (user, 2026-05-29). Users can still
+    drag-resize via the grid handles after the card lands.
+
+    We honour any explicit x/y placement hints (the agent may want to
+    group a related cluster together) but always force size.
+    """
     if layout is None:
         return LayoutHint()
-    return layout if isinstance(layout, LayoutHint) else LayoutHint.model_validate(layout)
+    raw = layout if isinstance(layout, dict) else layout.model_dump()
+    return LayoutHint(x=raw.get("x"), y=raw.get("y"))
 
 
 def create_dashboard_card(
