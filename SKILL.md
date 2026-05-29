@@ -7,6 +7,39 @@ description: AI-native market research dashboard. Use these tools to fetch marke
 
 This file is the manifest for Claude Code sessions working on or with `quant_radar`. Read it on every turn that involves the project.
 
+## Coverage discipline — only use the documented infrastructure
+
+This is the **strictest rule** in this project. Read it at session
+start and re-read before every card creation.
+
+**Cards may only be created using ``quant_radar.tools.*`` + the
+(source, kind) pairs documented in ``TOOLS.md``.** Do NOT use
+``WebFetch``, ad-hoc ``Bash`` scraping, MCP shortcuts, or any other
+out-of-band path to build a card. The whole point of this codebase
+is the curated, auditable data surface; freelancing defeats it.
+
+If a user request requires data or a tool NOT in ``TOOLS.md``, STOP.
+Call ``tools.request_user_decision(description=...)`` and surface
+its three-option menu to the user verbatim:
+
+- **A · Exit** — abandon the request, dashboard unchanged.
+- **B · Integrate** — close the app (`Ctrl+C` on `make app`), open a
+  dev session, add the tool/source/kind following the new-source
+  waterfall in this file, run pytest + the integration audit + a
+  Playwright E2E, restart with `make app`, re-ask.
+- **C · One-off in terminal** — only if you (the agent) can answer
+  the question via base tools (``WebFetch``, ``Bash``, ad-hoc
+  Python). Print the result in chat. **Do NOT create a card.** Cards
+  are reserved for ``quant_radar.tools.*`` outputs.
+
+Wait for the user's pick before doing anything. Don't preemptively
+execute option C. Don't pretend a card is from a documented source
+when it's actually scraped ad-hoc.
+
+If you're not sure whether a request is supported, scan ``TOOLS.md``
++ the kind/source tables below before answering. Cheaper than calling
+an unsupported adapter and apologizing afterward.
+
 ## What this project is
 
 A local Python package + Streamlit viewer. The user describes what they want (a chart, an analysis, a news scan) and you call typed Python tools that:

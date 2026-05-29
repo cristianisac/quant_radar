@@ -18,6 +18,10 @@ from quant_radar.tools.etfs import (
     etf_aum_scorecard,
     fetch_etf_aum,
 )
+from quant_radar.tools.governance import (
+    request_user_decision,
+    request_user_decision_yesno,
+)
 from quant_radar.tools.futures import (
     cme_futures_scorecard,
     describe_cme_futures_assets,
@@ -117,6 +121,8 @@ __all__ = [
     "persist_dashboard",
     "probe_history",
     "relationships_for_kind",
+    "request_user_decision",
+    "request_user_decision_yesno",
     "remove_card",
     "requirements_for",
     "rolling_zscore",

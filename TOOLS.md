@@ -3,7 +3,7 @@ Extensions to add: benzinga@1.6.1, bls@1.3.1, cftc@1.4.1, commodity@1.5.2, congr
 Building...
 # quant_radar — Tool & Data Surface
 
-**Generated**: this file is produced by `scripts/generate_tools_doc.py` from the live registry (`CATALOG` + `tools.__all__` + `kind_relationships`). Last regenerated 2026-05-28.
+**Generated**: this file is produced by `scripts/generate_tools_doc.py` from the live registry (`CATALOG` + `tools.__all__` + `kind_relationships`). Last regenerated 2026-05-29.
 
 Do not edit by hand — change the registry instead, then regenerate. A pytest assertion guards against drift.
 
@@ -60,8 +60,8 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 |---|---|:---:|---|
 | `news` | `title`, `url`, `source`, `published_at`, `summary` | ✅ | non-conforming surface (not ABC) |
 | `insider` | `transaction_price`, `share`, `change`, `transaction_code`, `insider_name`, `filing_date`, `is_derivative`, `source` | ✅ | rows=115, schema⊆actual=True |
-| `earnings_calendar` | `symbol`, `eps_estimate`, `eps_actual`, `revenue_estimate`, `revenue_actual`, `hour`, `quarter`, `year` | ✅ | rows=375, schema⊆actual=True |
-| `ipo_calendar` | `symbol`, `company_name`, `exchange`, `number_of_shares`, `price`, `status`, `total_shares_value` | ✅ | rows=7, schema⊆actual=True |
+| `earnings_calendar` | `symbol`, `eps_estimate`, `eps_actual`, `revenue_estimate`, `revenue_actual`, `hour`, `quarter`, `year` | ✅ | rows=368, schema⊆actual=True |
+| `ipo_calendar` | `symbol`, `company_name`, `exchange`, `number_of_shares`, `price`, `status`, `total_shares_value` | ✅ | rows=6, schema⊆actual=True |
 | `recommendation` | `strong_buy`, `buy`, `hold`, `sell`, `strong_sell`, `symbol` | ✅ | rows=4, schema⊆actual=True |
 | `insider_sentiment` | `change`, `mspr`, `symbol` | ✅ | rows=11, schema⊆actual=True |
 
@@ -75,9 +75,9 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 
 | kind | declared schema | verified | detail |
 |---|---|:---:|---|
-| `ohlcv` | `open`, `high`, `low`, `close`, `volume` | ✅ | rows=252, schema⊆actual=True |
+| `ohlcv` | `open`, `high`, `low`, `close`, `volume` | ✅ | rows=251, schema⊆actual=True |
 | `forex` | `open`, `high`, `low`, `close` | ✅ | rows=314, schema⊆actual=True |
-| `crypto` | `open`, `high`, `low`, `close`, `volume` | ✅ | rows=252, schema⊆actual=True |
+| `crypto` | `open`, `high`, `low`, `close`, `volume` | ✅ | rows=251, schema⊆actual=True |
 | `income` | `fiscal_period`, `fiscal_year`, `revenue`, `gross_profit`, `bottom_line_net_income` | ✅ | rows=5, schema⊆actual=True |
 | `balance` | `fiscal_period`, `fiscal_year`, `total_assets`, `total_liabilities`, `total_debt` | ✅ | rows=5, schema⊆actual=True |
 | `cash` | `fiscal_period`, `fiscal_year`, `operating_cash_flow`, `free_cash_flow` | ✅ | rows=5, schema⊆actual=True |
@@ -95,7 +95,7 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 
 | kind | declared schema | verified | detail |
 |---|---|:---:|---|
-| `macro` | `value` | ✅ | rows=16084, schema⊆actual=True |
+| `macro` | `value` | ✅ | rows=16085, schema⊆actual=True |
 
 ### `gdelt`
 
@@ -108,7 +108,7 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 | kind | declared schema | verified | detail |
 |---|---|:---:|---|
 | `news` | `title`, `url`, `source`, `published_at` | ✅ | non-conforming surface (not ABC) |
-| `news_tone` | `tone` | ✅ | rows=164, schema⊆actual=True |
+| `news_tone` | `tone` | ✅ | rows=167, schema⊆actual=True |
 
 ### `marketaux`
 
@@ -162,7 +162,7 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 
 | kind | declared schema | verified | detail |
 |---|---|:---:|---|
-| `economic_calendar` | `country`, `event`, `period`, `actual`, `previous`, `consensus`, `forecast` | ✅ | rows=71, schema⊆actual=True |
+| `economic_calendar` | `country`, `event`, `period`, `actual`, `previous`, `consensus`, `forecast` | ✅ | rows=52, schema⊆actual=True |
 
 ### `yfinance`
 
@@ -179,7 +179,7 @@ Each row is a (source, kind) pair. **Verified** means the integration audit succ
 
 ## 2. Agent-callable tool surface
 
-Every function exported from `quant_radar.tools`. The grouping is intent-based, not module-based. Tool count = 57.
+Every function exported from `quant_radar.tools`. The grouping is intent-based, not module-based. Tool count = 59.
 
 ### Card lifecycle
 
@@ -264,6 +264,13 @@ Every function exported from `quant_radar.tools`. The grouping is intent-based, 
 - `search_source` — Generic discovery — search any registered source by keyword.
 - `search_yfinance` — yfinance keyword search via Yahoo's quote endpoint.
 - `tools_for_ref` — Return analytical tools applicable to ``ref``.
+
+### Other / uncategorized
+
+- `request_user_decision`
+- `request_user_decision_yesno`
+
+> If you're adding a tool, please also classify it in `scripts/generate_tools_doc.py::_TOOL_GROUPS`.
 
 ## 3. Cross-kind relationships
 
