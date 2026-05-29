@@ -29,6 +29,26 @@ Rule of thumb:
 When in doubt, look for *data dependency*. If card B doesn't need card
 A's output, run them in parallel.
 
+## No hand-typed tables in analysis cards
+
+When the user asks for tabular data — *"top 10 ETFs by AUM"*, *"latest earnings calendar"*, *"recent SEC filings"* — **never** put a pipe-table into `analysis_markdown`. That's a freelance shortcut that produces a stale, hard-to-read render with raw `| col | col |` pipes (the analysis card renders markdown but doesn't reformat tables). Worse, the data is hand-typed by you and can drift, fabricate tickers, or quote wrong numbers.
+
+The right path is always:
+
+```python
+tools.create_dashboard_card(
+    type="table",                         # not "analysis"
+    title="Top-10 Bitcoin ETFs by AUM",
+    data_refs=[{"source":"yfinance",
+                "kind":"etf_aum",
+                "name":"IBIT,FBTC,BITB,..."}],   # comma-joined → scorecard
+)
+```
+
+`create_dashboard_card` and `update_card` **enforce this at runtime** — they reject `type='analysis'` payloads containing pipe-table markdown with a clear error pointing back here. If you hit that error, the fix is to find the right `(source, kind)` combo in TOOLS.md and use `type='table'`, not to escape the regex.
+
+When no `table`-backed source covers the request, surface the gap with `tools.request_user_decision(...)` — don't fabricate a markdown table to make it look like it worked.
+
 ## Coverage discipline — only use the documented infrastructure
 
 This is the **strictest rule** in this project. Read it at session
