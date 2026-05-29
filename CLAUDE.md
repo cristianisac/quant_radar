@@ -4,6 +4,15 @@ AI-native market research dashboard. Chat-first: the user drives a Claude
 Code session in a terminal panel; the agent fetches data via Python tools
 and creates / updates dashboard cards that render in a React + Plotly UI.
 
+## Read these on every session start
+
+**Before responding to the user's first request, read both `SKILL.md` and
+`TOOLS.md` fully.** This loads the project's tool / source / kind surface
+into context so the first response can dispatch immediately instead of
+discovering capabilities mid-request. ~2s extra on session start saves
+5-10s on every subsequent prompt because Claude won't need to grep for
+what's available.
+
 ## Where the rules live
 
 - **`SKILL.md`** is the canonical guide. Read it at the start of every
