@@ -4,6 +4,7 @@ from quant_radar.cards.spec import (
     ChartSpec,
     DataRef,
     LayoutHint,
+    Series,
 )
 from quant_radar.cards.store import (
     get,
@@ -24,6 +25,7 @@ __all__ = [
     "ChartSpec",
     "DataRef",
     "LayoutHint",
+    "Series",
     "get",
     "list_cards",
     "main_save",
