@@ -71,8 +71,14 @@ docker run --rm \
 API_PID=$!
 
 # 2. ttyd on host (so Claude Code inherits host auth / gh / git).
+#
+# Launch claude with a warmup query as the first turn so the SKILL.md +
+# TOOLS.md preload happens during the few seconds the user spends
+# reading the dashboard — not on their first real prompt. Shifts the
+# ~2s read overhead out of the user's interactive path.
+WARMUP="Read SKILL.md and TOOLS.md fully, then reply 'ready' (one word)."
 if command -v claude >/dev/null 2>&1; then
-    CMD=(bash -c "cd '$REPO_DIR' && claude")
+    CMD=(bash -c "cd '$REPO_DIR' && claude '$WARMUP'")
 else
     CMD=(bash -c "cd '$REPO_DIR' && exec bash")
 fi
