@@ -133,9 +133,16 @@ export function ChartCard({ card, height: forcedHeight, enlarged = false }: Prop
     };
   }, [figure, enlarged]);
 
+  // wrapperStyle: when not forced, fill the parent grid cell exactly.
+  // The previous `minHeight: 240` forced an absolute floor that
+  // overflowed small card heights and left the bottom of the chart
+  // clipped behind the card edge (the "preview squeezed" bug user
+  // reported 2026-05-29). With `minHeight: 0` the chart resizes
+  // smoothly to whatever the grid allocates — Plotly's `responsive:
+  // true` + ResizeObserver below handle the redraw on size change.
   const wrapperStyle = forcedHeight
     ? { height: forcedHeight }
-    : { height: "100%", minHeight: 240 };
+    : { height: "100%", minHeight: 0 };
 
   // Keep the corner badge short — the legend below already spells out
   // the friendly long-form for each series.
@@ -210,12 +217,28 @@ function buildFigure(
   const traces: object[] = [];
 
   const primaryName = pickLabel(data.name, data.display_name);
-  if (isOhlcv) {
+  if (isOhlcv && !compact) {
+    // Candlesticks ONLY in the enlarged view. In the compact card the
+    // candle widths become sub-pixel with multi-year daily history,
+    // so the older bars don't render visibly and the y-axis ends up
+    // showing only the most-recent range (the "preview only half
+    // visible" bug — user, 2026-05-29). Enlarged view has the room
+    // for OHLC detail to be legible.
     traces.push({
       type: "candlestick", x,
       open: cols.open, high: cols.high, low: cols.low, close: cols.close,
       increasing: { line: { color: "#22c55e" } },
       decreasing: { line: { color: "#ef4444" } },
+      name: primaryName, xaxis: "x", yaxis: "y",
+      showlegend: true,
+    });
+  } else if (isOhlcv) {
+    // Compact OHLCV → line chart of close. Same underlying data,
+    // readable at the small card size; the full date range and full
+    // y-range are visible regardless of how narrow the card is.
+    traces.push({
+      type: "scatter", mode: "lines", x, y: cols.close,
+      line: { color: "#22c55e", width: 1.5 },
       name: primaryName, xaxis: "x", yaxis: "y",
       showlegend: true,
     });
@@ -322,6 +345,13 @@ function buildFigure(
       // multi-axis layouts.
       rangeslider: { visible: false },
       anchor: nRows > 1 ? `y${nRows}` : "y",
+      // Force the visible range to the actual data extent. Without
+      // this, Plotly autorange occasionally extends into whitespace
+      // past the data (the "chart looks like it goes back to 1980 but
+      // we only have 2020+" issue user reported 2026-05-29). Using
+      // [first, last] timestamp keeps the chart honest to the data.
+      range: x.length > 0 ? [x[0], x[x.length - 1]] : undefined,
+      autorange: x.length > 0 ? false : true,
     },
     shapes,
     // Modebar lives in the paper margin, away from the data. Compact
