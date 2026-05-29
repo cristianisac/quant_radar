@@ -49,8 +49,19 @@ if [[ -f "${REPO_DIR}/.env" ]]; then
 fi
 
 # 1. FastAPI in Docker (serves both /api/* and the React bundle at /).
+#
+# Harden flags mirror the Makefile HARDEN target. --read-only was dropped
+# when OpenBB landed because OpenBB's import writes generated Python +
+# a .build.lock on every fresh module load (see CLAUDE.md decision #7).
+# Instead we tmpfs every writable path OpenBB and its extensions touch:
+# /home/radar/.openbb_platform (auto-build lock + settings) and
+# /home/radar/.cache (HF tokenizers + misc). /app/data is host-mounted
+# (not tmpfs) so the parquet cache survives container restarts in this
+# production launcher.
 docker run --rm \
-    --read-only --tmpfs /tmp --tmpfs /home/radar/.streamlit \
+    --tmpfs /tmp \
+    --tmpfs /home/radar/.openbb_platform:exec,uid=1000,gid=1000 \
+    --tmpfs /home/radar/.cache:exec,uid=1000,gid=1000 \
     --security-opt no-new-privileges --cap-drop ALL \
     "${ENV_FILE_ARG[@]}" \
     -v "${REPO_DIR}/data:/app/data" \
