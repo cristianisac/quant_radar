@@ -7,6 +7,28 @@ description: AI-native market research dashboard. Use these tools to fetch marke
 
 This file is the manifest for Claude Code sessions working on or with `quant_radar`. Read it on every turn that involves the project.
 
+## Parallel tool calls — fan out independent work
+
+When the user requests multiple cards that don't depend on each other —
+e.g. *"give me a BTC chart with RSI, a top-10 ETF AUM table, and a
+3-month unemployment chart"* — **issue the `create_dashboard_card` (and
+underlying fetch) calls in parallel**, not sequentially. Anthropic's API
+supports multiple tool uses per turn, and each card hits a different
+upstream API anyway, so serializing them is pure latency waste.
+
+Rule of thumb:
+
+- **Independent cards** (different tickers / sources / kinds) → parallel.
+  All three appear on the dashboard within seconds, not one-by-one.
+- **Sequential cards** (e.g. "compute X, then create a card from the
+  result") → serial, because the second call depends on the first.
+- **Card + analysis** (e.g. "make the chart and tell me the regime") →
+  parallel for the data fetch + chart creation, serial for the analysis
+  step that reads the resulting frame.
+
+When in doubt, look for *data dependency*. If card B doesn't need card
+A's output, run them in parallel.
+
 ## Coverage discipline — only use the documented infrastructure
 
 This is the **strictest rule** in this project. Read it at session
