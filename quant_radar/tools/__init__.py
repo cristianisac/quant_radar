@@ -80,6 +80,39 @@ from quant_radar.tools.sources_meta import (
     search_yfinance,
 )
 
+# --- Caveman timing wrapper ----------------------------------------------
+#
+# Every public tool gets wrapped with a perf_counter timer that emits a
+# single line to stderr per call:
+#
+#     [timing] tool=fetch_etf_aum dur=4.823s
+#
+# Set ``QUANT_RADAR_TOOL_TIMING=0`` to silence. Default is on. This is the
+# cheapest possible way to answer "where did those 12 minutes go?" — the
+# user's chat log carries the line items, no profiler setup needed.
+import os
+import sys
+import time
+from functools import wraps
+
+_TIMING_ENABLED = os.environ.get("QUANT_RADAR_TOOL_TIMING", "1") != "0"
+
+
+def _timed(name: str, fn):
+    @wraps(fn)
+    def wrapper(*a, **kw):
+        t0 = time.perf_counter()
+        try:
+            return fn(*a, **kw)
+        finally:
+            sys.stderr.write(
+                f"[timing] tool={name} dur={time.perf_counter() - t0:.3f}s\n"
+            )
+            sys.stderr.flush()
+
+    return wrapper
+
+
 __all__ = [
     "add_annotation",
     "all_analytical_tools",
@@ -141,3 +174,12 @@ __all__ = [
     "tools_for_ref",
     "update_card",
 ]
+
+
+if _TIMING_ENABLED:
+    _g = globals()
+    for _name in __all__:
+        _fn = _g.get(_name)
+        if callable(_fn):
+            _g[_name] = _timed(_name, _fn)
+    del _g, _name, _fn

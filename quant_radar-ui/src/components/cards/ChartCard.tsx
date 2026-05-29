@@ -127,8 +127,66 @@ export function ChartCard({ card, height: forcedHeight, enlarged = false }: Prop
       Plotly_.Plots.resize(el);
     });
     obs.observe(el);
+    // Auto-rescale Y when the user zooms in on X. Default Plotly behaviour
+    // keeps Y anchored to the full-data range, so an outlier elsewhere in
+    // the series squashes the zoomed window. On any x-range change, find
+    // visible y values across every trace and relayout y to fit. Double-
+    // click (autorange) restores full range and we no-op (e['xaxis.autorange']).
+    const onRelayout = (e: any) => {
+      if (!e) return;
+      const x0 = e["xaxis.range[0]"];
+      const x1 = e["xaxis.range[1]"];
+      if (x0 === undefined || x1 === undefined) return;
+      const lo = new Date(x0).getTime();
+      const hi = new Date(x1).getTime();
+      // Walk each y-axis on the figure and compute its visible min/max
+      // independently — secondary axes (right-side) and subplots all
+      // get rescaled correctly. Per-axis grouping by trace.yaxis.
+      const data = (el as any).data ?? [];
+      const perAxis: Record<string, number[]> = {};
+      for (const tr of data) {
+        const axis = tr.yaxis ?? "y";
+        const xs = tr.x ?? [];
+        const ohlc = tr.type === "candlestick";
+        const lows = ohlc ? tr.low : tr.y;
+        const highs = ohlc ? tr.high : tr.y;
+        if (!xs || !lows || !highs) continue;
+        for (let i = 0; i < xs.length; i += 1) {
+          const t = new Date(xs[i]).getTime();
+          if (t < lo || t > hi) continue;
+          const l = lows[i];
+          const h = highs[i];
+          if (typeof l === "number" && Number.isFinite(l)) {
+            (perAxis[axis] ??= []).push(l);
+          }
+          if (typeof h === "number" && Number.isFinite(h) && h !== l) {
+            (perAxis[axis] ??= []).push(h);
+          }
+        }
+      }
+      const update: Record<string, [number, number]> = {};
+      for (const [axis, vals] of Object.entries(perAxis)) {
+        if (vals.length === 0) continue;
+        let mn = Infinity;
+        let mx = -Infinity;
+        for (const v of vals) {
+          if (v < mn) mn = v;
+          if (v > mx) mx = v;
+        }
+        if (!Number.isFinite(mn) || !Number.isFinite(mx)) continue;
+        const pad = (mx - mn) * 0.05 || Math.abs(mx) * 0.01 || 1;
+        // Plotly axis name: 'y' → 'yaxis.range', 'y2' → 'yaxis2.range', ...
+        const key = axis === "y" ? "yaxis.range" : `yaxis${axis.slice(1)}.range`;
+        update[key] = [mn - pad, mx + pad];
+      }
+      if (Object.keys(update).length > 0) {
+        Plotly_.relayout(el, update);
+      }
+    };
+    (el as any).on?.("plotly_relayout", onRelayout);
     return () => {
       obs.disconnect();
+      (el as any).removeAllListeners?.("plotly_relayout");
       Plotly_.purge(el);
     };
   }, [figure, enlarged]);
