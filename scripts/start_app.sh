@@ -79,4 +79,18 @@ fi
 ttyd -p "$TTYD_PORT" -i 127.0.0.1 -W "${CMD[@]}" &
 TTYD_PID=$!
 
+# 3. Wait until the API is actually serving, then auto-open the browser.
+# The Docker image pulls OpenBB which takes 5-10s to import on first run;
+# poll /api/health rather than guessing a fixed sleep.
+APP_URL="http://127.0.0.1:${API_PORT}"
+echo "  Waiting for API at ${APP_URL}/api/health ..."
+for _ in $(seq 1 60); do
+    if curl -sf "${APP_URL}/api/health" >/dev/null 2>&1; then
+        echo "  → ready. Opening browser."
+        open "${APP_URL}" 2>/dev/null || true
+        break
+    fi
+    sleep 1
+done
+
 wait "$API_PID"

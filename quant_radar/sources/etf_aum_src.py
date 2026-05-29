@@ -133,7 +133,19 @@ def _lookup_one(ticker: str) -> dict[str, Any]:
 def fetch_etf_aum_single(
     ticker: str, *, refresh: bool = False,
 ) -> pd.DataFrame:
-    """One-row DataFrame for ``ticker``. ``timestamp`` index = fetch time."""
+    """One-row DataFrame for ``ticker``. ``timestamp`` index = fetch time.
+
+    Accepts a comma-separated list of tickers too — dispatched to the
+    scorecard fetcher so a single DataRef can hydrate a multi-row
+    TableCard. Each row is stamped with a synthetic 1-second-apart
+    timestamp so the DatetimeIndex stays unique (some downstream code
+    expects monotonic indexing).
+    """
+    if "," in ticker:
+        return fetch_etf_aum_scorecard(
+            [t.strip() for t in ticker.split(",") if t.strip()],
+            refresh=refresh,
+        )
     key = CacheKey(
         source="yfinance", kind="etf_aum",
         name=ticker, interval="snapshot",
@@ -143,6 +155,44 @@ def fetch_etf_aum_single(
         ts = pd.Timestamp.now(tz=UTC)
         row = _lookup_one(ticker)
         return pd.DataFrame([row], index=[ts])[_SCHEMA_COLS].rename_axis("timestamp")
+
+    return get_or_fetch(
+        key, fetcher, start=None, end=None, refresh=refresh,
+        ttl_seconds=TTL_DAILY_SEC,
+    )
+
+
+def fetch_etf_aum_scorecard(
+    tickers: list[str], *, refresh: bool = False,
+) -> pd.DataFrame:
+    """Multi-row scorecard DataFrame for a list of tickers.
+
+    Sorted by ``aum`` descending. Indexed by a synthetic DatetimeIndex
+    (UTC ``now`` + 1-second stride per row) so it round-trips through
+    the /data endpoint, which requires a DatetimeIndex.
+    """
+    key = CacheKey(
+        source="yfinance", kind="etf_aum",
+        name=",".join(tickers), interval="scorecard",
+    )
+
+    def fetcher(start: datetime | None = None, end: datetime | None = None) -> pd.DataFrame:
+        rows = [_lookup_one(t) for t in tickers]
+        df = pd.DataFrame(rows)[_SCHEMA_COLS]
+        # TableCard reverses rows ("most-recent first" — financial-
+        # statement convention). For a scorecard we want the biggest
+        # row shown first after that reverse, so we sort ASC here and
+        # give the biggest the LATEST synthetic timestamp. NaN AUM rows
+        # land at the top of the ASC sort and end up at the bottom of
+        # the rendered table — which matches user expectation (real
+        # numbers first, missing-data rows pushed to the end).
+        df = df.sort_values("aum", ascending=True, na_position="first")
+        base = pd.Timestamp.now(tz=UTC)
+        df.index = pd.DatetimeIndex(
+            [base + pd.Timedelta(seconds=i) for i in range(len(df))],
+            name="timestamp",
+        )
+        return df
 
     return get_or_fetch(
         key, fetcher, start=None, end=None, refresh=refresh,
