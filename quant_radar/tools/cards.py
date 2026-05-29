@@ -8,6 +8,7 @@ imports needed by the agent) and return Pydantic dicts.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 from uuid import UUID
 
@@ -20,6 +21,16 @@ from quant_radar.cards.spec import (
     DataRef,
     LayoutHint,
     Target,
+)
+
+# Two or more rows of `| cell | cell | …` separated by a header divider —
+# the classic GitHub-Flavored-Markdown table shape. We reject it inside
+# analysis cards because typing data into prose is a freelance shortcut
+# the agent reaches for when it doesn't know about the `table` card
+# type backed by a real DataRef. See SKILL.md "No hand-typed tables".
+_MD_TABLE_RE = re.compile(
+    r"^\s*\|[^\n]+\|\s*\n\s*\|[\s:|-]+\|\s*\n\s*\|[^\n]+\|",
+    re.MULTILINE,
 )
 
 
@@ -65,6 +76,18 @@ def create_dashboard_card(
     target: Target = "working",
 ) -> dict[str, Any]:
     """Create a new card and persist it. Defaults to the working dashboard."""
+    if (
+        type == "analysis"
+        and analysis_markdown
+        and _MD_TABLE_RE.search(analysis_markdown)
+    ):
+        raise ValueError(
+            "Refusing to create an `analysis` card whose markdown contains a "
+            "pipe-table. Tabular data belongs in a `table` card backed by a "
+            "real DataRef (so it stays live + refreshable). "
+            "Retry with type='table' and the appropriate (source, kind, name) "
+            "DataRef — see SKILL.md > 'No hand-typed tables in analysis cards'."
+        )
     card = Card(
         type=type,
         title=title,
@@ -111,6 +134,19 @@ def update_card(
     card = store.get(card_id, target)
     if card is None:
         return None
+    # Same guard as create_dashboard_card — otherwise the agent could
+    # route around the restriction by creating an empty analysis card
+    # and then updating in the pipe-table markdown afterwards.
+    if (
+        card.type == "analysis"
+        and analysis_markdown
+        and _MD_TABLE_RE.search(analysis_markdown)
+    ):
+        raise ValueError(
+            "Refusing to update an `analysis` card with pipe-table markdown. "
+            "Create a `table` card backed by a real DataRef instead — see "
+            "SKILL.md > 'No hand-typed tables in analysis cards'."
+        )
     if title is not None:
         card.title = title
     if chart_spec is not None:
