@@ -25,10 +25,18 @@ export interface Annotation {
   color?: string | null;
 }
 
+export interface Series {
+  ref: number;
+  column: string;
+  axis: "left" | "right";
+  label?: string | null;
+}
+
 export interface ChartSpec {
   overlays: string[];
   subplots: string[];
   annotations: Annotation[];
+  series: Series[];
 }
 
 export interface LayoutHint {

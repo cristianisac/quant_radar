@@ -275,58 +275,96 @@ function buildFigure(
   const traces: object[] = [];
 
   const primaryName = pickLabel(data.name, data.display_name);
-  if (isOhlcv && !compact) {
-    // Candlesticks ONLY in the enlarged view. In the compact card the
-    // candle widths become sub-pixel with multi-year daily history,
-    // so the older bars don't render visibly and the y-axis ends up
-    // showing only the most-recent range (the "preview only half
-    // visible" bug — user, 2026-05-29). Enlarged view has the room
-    // for OHLC detail to be legible.
-    traces.push({
-      type: "candlestick", x,
-      open: cols.open, high: cols.high, low: cols.low, close: cols.close,
-      increasing: { line: { color: "#22c55e" } },
-      decreasing: { line: { color: "#ef4444" } },
-      name: primaryName, xaxis: "x", yaxis: "y",
-      showlegend: true,
-    });
-  } else if (isOhlcv) {
-    // Compact OHLCV → line chart of close. Same underlying data,
-    // readable at the small card size; the full date range and full
-    // y-range are visible regardless of how narrow the card is.
-    traces.push({
-      type: "scatter", mode: "lines", x, y: cols.close,
-      line: { color: "#22c55e", width: 1.5 },
-      name: primaryName, xaxis: "x", yaxis: "y",
-      showlegend: true,
-    });
-  } else {
-    traces.push({
-      type: "scatter", mode: "lines", x, y: close,
-      line: { color: "#22c55e", width: 1.5 },
-      name: primaryName, xaxis: "x", yaxis: "y",
-      showlegend: true,
-    });
-  }
 
-  const second = datas[1];
-  const hasSecond = second !== null && second !== undefined && second.timestamps.length > 0;
-  // Secondary y-axis is placed after all subplot axes, so naming doesn't
-  // collide. nRows already accounts for the main row + subplots.
+  // Secondary y-axis index — placed after subplots so axis names don't
+  // collide. Used by both the explicit `series` path (when any series
+  // is on the right) and the implicit two-ref path below.
   const secondAxisIndex = nRows + 1;
-  if (hasSecond) {
-    const cols2 = second.columns;
-    const close2 = cols2.close ?? cols2.value ?? pickFirstNumericColumn(cols2) ?? [];
-    const secondName = pickLabel(second.name, second.display_name);
-    traces.push({
-      type: "scatter", mode: "lines",
-      x: second.timestamps, y: close2,
-      line: { color: "#fbbf24", width: 1.5 },
-      name: secondName,
-      xaxis: "x",
-      yaxis: `y${secondAxisIndex}`,
-      showlegend: true,
-    });
+
+  // ---------------------------------------------------------------
+  // Path A: explicit chart_spec.series → caller picked the exact
+  // (ref, column, axis) for every line. Bypasses OHLCV / waterfall.
+  // Use case: dual-axis plot from the SAME frame (e.g. standard vs
+  // micro futures volume), or any time the caller wants control.
+  // ---------------------------------------------------------------
+  const explicitSeries = spec?.series ?? [];
+  const usingExplicit = explicitSeries.length > 0;
+  let hasSecond = false;
+
+  if (usingExplicit) {
+    let seriesIdx = 0;
+    for (const s of explicitSeries) {
+      const frame = datas[s.ref];
+      if (!frame || frame.timestamps.length === 0) continue;
+      const colVals = frame.columns[s.column];
+      if (!colVals) continue;
+      const isRight = s.axis === "right";
+      if (isRight) hasSecond = true;
+      // Stable colour by name so swapping series order doesn't reshuffle
+      // hues; reuse the overlay palette so the look matches indicators.
+      const colour = overlayColor(s.label ?? s.column ?? String(seriesIdx));
+      traces.push({
+        type: "scatter", mode: "lines",
+        x: frame.timestamps, y: colVals,
+        line: { color: colour, width: 1.5 },
+        name: s.label ?? `${frame.name} · ${s.column}`,
+        xaxis: "x",
+        yaxis: isRight ? `y${secondAxisIndex}` : "y",
+        showlegend: true,
+      });
+      seriesIdx += 1;
+    }
+  } else {
+    if (isOhlcv && !compact) {
+      // Candlesticks ONLY in the enlarged view. In the compact card the
+      // candle widths become sub-pixel with multi-year daily history,
+      // so the older bars don't render visibly and the y-axis ends up
+      // showing only the most-recent range (the "preview only half
+      // visible" bug — user, 2026-05-29). Enlarged view has the room
+      // for OHLC detail to be legible.
+      traces.push({
+        type: "candlestick", x,
+        open: cols.open, high: cols.high, low: cols.low, close: cols.close,
+        increasing: { line: { color: "#22c55e" } },
+        decreasing: { line: { color: "#ef4444" } },
+        name: primaryName, xaxis: "x", yaxis: "y",
+        showlegend: true,
+      });
+    } else if (isOhlcv) {
+      // Compact OHLCV → line chart of close. Same underlying data,
+      // readable at the small card size; the full date range and full
+      // y-range are visible regardless of how narrow the card is.
+      traces.push({
+        type: "scatter", mode: "lines", x, y: cols.close,
+        line: { color: "#22c55e", width: 1.5 },
+        name: primaryName, xaxis: "x", yaxis: "y",
+        showlegend: true,
+      });
+    } else {
+      traces.push({
+        type: "scatter", mode: "lines", x, y: close,
+        line: { color: "#22c55e", width: 1.5 },
+        name: primaryName, xaxis: "x", yaxis: "y",
+        showlegend: true,
+      });
+    }
+
+    const second = datas[1];
+    hasSecond = second !== null && second !== undefined && second.timestamps.length > 0;
+    if (hasSecond && second) {
+      const cols2 = second.columns;
+      const close2 = cols2.close ?? cols2.value ?? pickFirstNumericColumn(cols2) ?? [];
+      const secondName = pickLabel(second.name, second.display_name);
+      traces.push({
+        type: "scatter", mode: "lines",
+        x: second.timestamps, y: close2,
+        line: { color: "#fbbf24", width: 1.5 },
+        name: secondName,
+        xaxis: "x",
+        yaxis: `y${secondAxisIndex}`,
+        showlegend: true,
+      });
+    }
   }
 
   for (const overlay of spec?.overlays ?? []) {

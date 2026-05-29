@@ -371,7 +371,46 @@ Cards (Phase 3 — `from quant_radar import tools`):
 | `tools.new_working_dashboard()` | Start (or re-open) a working session — empty. Working tab appears in the viewer immediately. |
 | `tools.close_working_dashboard()` | End the working session entirely — Working tab disappears. Symmetric to `new_working_dashboard`. |
 
-Card types: `chart`, `news`, `sentiment`, `analysis`, `combo`. Card specs are tiny — they reference data via `DataRef` (source/kind/name/interval), never embed it.
+Card types: `chart`, `news`, `sentiment`, `analysis`, `combo`, `table`. Card specs are tiny — they reference data via `DataRef` (source/kind/name/interval), never embed it.
+
+### Dual-axis charts — `chart_spec.series`
+
+Use `chart_spec.series` whenever you want two (or more) lines on the same chart with explicit left/right axis assignment. **Works for any combination** — two columns of the same frame, two different frames, two different sources. One contract, no special casing.
+
+Each entry is `{ref, column, axis, label?}`:
+- `ref` — index into `data_refs` (0-based)
+- `column` — the column name in that frame (e.g. `"close"`, `"standard_contracts"`, `"value"`)
+- `axis` — `"left"` or `"right"`
+- `label` — optional override for the legend; defaults to `"<symbol> · <column>"`
+
+**Same frame, dual axis** (BTC futures: standard contracts left, micro right):
+```python
+tools.create_dashboard_card(
+    type="chart", title="BTC futures volume — standard vs micro",
+    data_refs=[{"source":"yfinance","kind":"futures_aggregate","name":"BTC"}],
+    chart_spec={"series": [
+        {"ref": 0, "column": "standard_contracts", "axis": "left"},
+        {"ref": 0, "column": "micro_contracts",    "axis": "right"},
+    ]},
+)
+```
+
+**Two different frames, dual axis** (BTC price left, 10y yield right):
+```python
+tools.create_dashboard_card(
+    type="chart", title="BTC vs 10y yield",
+    data_refs=[
+        {"source":"binance","kind":"ohlcv","name":"BTCUSDT"},
+        {"source":"fred","kind":"macro","name":"DGS10"},
+    ],
+    chart_spec={"series": [
+        {"ref": 0, "column": "close", "axis": "left"},
+        {"ref": 1, "column": "value", "axis": "right"},
+    ]},
+)
+```
+
+When `chart_spec.series` is omitted, the renderer falls back to the implicit rule — first ref's `close`/`value`/first-numeric on the left axis, second ref (if any) on the right. Every existing card keeps working unchanged.
 
 **Lifecycle.** Working tab is shown if `working.json` exists (open session). `new_working_dashboard` opens it (empty list); `close_working_dashboard` removes the file. The viewer auto-refreshes both states.
 

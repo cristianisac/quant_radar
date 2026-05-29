@@ -40,12 +40,43 @@ class Annotation(BaseModel):
     color: str | None = None
 
 
+class Series(BaseModel):
+    """Explicit series assignment for multi-axis charts.
+
+    Lets a card place two (or more) named columns on left/right y-axes
+    regardless of whether the data lives in one frame or many. ``ref``
+    indexes into ``card.data_refs``; ``column`` names the column in
+    that frame. Without an explicit ``series`` list the chart falls
+    back to the close→value→first-numeric waterfall on the first ref
+    (and on the second ref as a right-axis series, if present).
+
+    Example — two series from the **same** frame on dual axes::
+
+        chart_spec = {
+            "series": [
+                {"ref": 0, "column": "standard_contracts", "axis": "left"},
+                {"ref": 0, "column": "micro_contracts",    "axis": "right"},
+            ],
+        }
+    """
+
+    ref: int = 0
+    column: str
+    axis: Literal["left", "right"] = "left"
+    label: str | None = None
+
+
 class ChartSpec(BaseModel):
     """Rendering hints for a chart card."""
 
     overlays: list[str] = Field(default_factory=list)  # e.g. ["sma_50", "sma_200"]
     subplots: list[str] = Field(default_factory=list)  # e.g. ["rsi", "volume", "yoy"]
     annotations: list[Annotation] = Field(default_factory=list)
+    # Explicit series → axis assignment. Use when both series live in
+    # one frame, or when you want to force which goes left vs right.
+    # When empty, the renderer uses the implicit "first ref → left,
+    # second ref → right" rule that all existing cards rely on.
+    series: list[Series] = Field(default_factory=list)
 
 
 class LayoutHint(BaseModel):
